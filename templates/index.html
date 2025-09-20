@@ -36,11 +36,11 @@
                             <div class="card-body">
                                 <form action="{{ url_for('user_login') }}" method="post">
                                     <div class="mb-3">
-                                        <label for="username" class="form-label">Email Address</label>
+                                        <label for="username" class="form-label">Username or Email</label>
                                         <div class="input-group">
-                                            <span class="input-group-text"><i class="fas fa-envelope"></i></span>
-                                            <input type="email" class="form-control" id="username" name="username" 
-                                                   placeholder="sonamyadav90990@gmail.com" required>
+                                            <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                            <input type="text" class="form-control" id="username" name="username" 
+                                                   placeholder="Enter your username or email" required>
                                         </div>
                                     </div>
                                     <div class="mb-3">
@@ -56,7 +56,7 @@
                                     </button>
                                 </form>
                                 <p class="text-center text-muted mt-3">
-                                    <small>Demo: Any credentials will work</small>
+                                    <p>Don't have an account? <a href="{{ url_for('user_register') }}">Register here</a></p>
                                 </p>
                             </div>
                         </div>
@@ -91,7 +91,6 @@
                                     </button>
                                 </form>
                                 <p class="text-center text-muted mt-3">
-                                    <small>Use: admin / admin123</small>
                                 </p>
                             </div>
                         </div>
@@ -144,7 +143,7 @@
             
             <!-- Footer -->
             <div class="text-center mt-4">
-                <p class="text-white">© 2024 Pilgrim Crowd Management System. Ensuring spiritual journeys remain sacred.</p>
+                <p class="text-white">©️ 2024 Pilgrim Crowd Management System. Ensuring spiritual journeys remain sacred.</p>
             </div>
         </div>
     </div>
