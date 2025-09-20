@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h2>Crowd Visualization</h2>
+        <p class="lead">Historical crowd data and trends</p>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5>Crowd Trends Over Time</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="crowdChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5>Temple-wise Distribution</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="templeChart" width="400" height="400"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5>Crowd Level Analysis</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="crowdLevelChart" width="400" height="400"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+$(document).ready(function() {
+    // Sample data for charts
+    const dates = [{% for data in historical_data %}'{{ data[0] }}',{% endfor %}];
+    const footfalls = [{% for data in historical_data %}{{ data[2] }},{% endfor %}];
+    const temples = ['Somnath', 'Dwarka', 'Ambaji', 'Pavagadh'];
+    
+    // Line chart for crowd trends
+    const crowdCtx = document.getElementById('crowdChart').getContext('2d');
+    const crowdChart = new Chart(crowdCtx, {
+        type: 'line',
+        data: {
+            labels: dates,
+            datasets: [{
+                label: 'Estimated Footfall',
+                data: footfalls,
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+    
+    // Pie chart for temple distribution
+    const templeCtx = document.getElementById('templeChart').getContext('2d');
+    const templeChart = new Chart(templeCtx, {
+        type: 'pie',
+        data: {
+            labels: temples,
+            datasets: [{
+                data: [40, 25, 20, 15], // Sample percentages
+                backgroundColor: [
+                    'rgb(255, 99, 132)',
+                    'rgb(54, 162, 235)',
+                    'rgb(255, 205, 86)',
+                    'rgb(75, 192, 192)'
+                ]
+            }]
+        }
+    });
+    
+    // Doughnut chart for crowd levels
+    const crowdLevelCtx = document.getElementById('crowdLevelChart').getContext('2d');
+    const crowdLevelChart = new Chart(crowdLevelCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Low', 'Moderate', 'High'],
+            datasets: [{
+                data: [30, 50, 20], // Sample percentages
+                backgroundColor: [
+                    'rgb(75, 192, 192)',
+                    'rgb(255, 205, 86)',
+                    'rgb(255, 99, 132)'
+                ]
+            }]
+        }
+    });
+});
+</script>
+{% endblock %}

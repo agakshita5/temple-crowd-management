@@ -1,0 +1,6 @@
+"SampleID","Date","TempleName","DayOfWeek","Month","IsHolidayOrFestival","EstimatedFootfall","WeatherCondition","AvgWaitTime","VIPVisits","QueueStatus","SpecialEvent","EmergencyIncidents","ElderlyDevotees","DifferentlyAbledDevotees","AdminStaffOnDuty"
+"1","2024-04-12","Somnath","Friday","April","No","27000","Sunny","38","No","Normal","None","0","2600","360","29"
+"2","2024-05-06","Ambaji","Monday","May","Yes","97000","Sunny","65","Yes","Very Crowded","Poonam","2","6200","710","52"
+"3","2024-10-31","Dwarka","Thursday","October","Yes","129000","Cloudy","120","No","Very Crowded","Diwali","0","8400","1240","60"
+"4","2025-02-26","Somnath","Wednesday","February","Yes","188000","Sunny","93","Yes","Crowded","Mahashivratri","1","13200","1890","70"
+"5","2024-09-15","Pavagadh","Sunday","September","No","32000","Rainy","45","No","Crowded","None","0","2100","330","34"

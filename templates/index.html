@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <!-- Hero Section -->
+    <div class="hero-section animate-fadeIn">
+        <h1 class="hero-title">Pilgrim Crowd Management System</h1>
+        <p class="hero-subtitle">Ensuring a safe and spiritual experience for all devotees</p>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10">
+            <div class="card animate-fadeIn" style="animation-delay: 0.2s;">
+                <div class="card-header">
+                    <h3 class="mb-0"><i class="fas fa-temple"></i> Welcome to Pilgrim</h3>
+                </div>
+                <div class="card-body">
+                    {% if error %}
+                    <div class="alert alert-danger animate-fadeIn">{{ error }}</div>
+                    {% endif %}
+                    
+                    <!-- Login Toggle -->
+                    <div class="login-toggle-container mb-4">
+                        <div class="login-toggle">
+                            <button type="button" id="user-login-btn" class="toggle-btn active">User Login</button>
+                            <button type="button" id="admin-login-btn" class="toggle-btn">Admin Login</button>
+                        </div>
+                    </div>
+                    
+                    <!-- User Login Form -->
+                    <div id="user-login-form" class="animate-fadeIn">
+                        <div class="card mb-4">
+                            <div class="card-header bg-success text-white text-center">
+                                <h5 class="mb-0"><i class="fas fa-user"></i> User Login</h5>
+                            </div>
+                            <div class="card-body">
+                                <form action="{{ url_for('user_login') }}" method="post">
+                                    <div class="mb-3">
+                                        <label for="username" class="form-label">Email Address</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                            <input type="email" class="form-control" id="username" name="username" 
+                                                   placeholder="sonamyadav90990@gmail.com" required>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="password" class="form-label">Password</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                            <input type="password" class="form-control" id="password" name="password" 
+                                                   placeholder="Enter your password" required>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-success w-100 pulse">
+                                        <i class="fas fa-sign-in-alt"></i> User Login
+                                    </button>
+                                </form>
+                                <p class="text-center text-muted mt-3">
+                                    <small>Demo: Any credentials will work</small>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Admin Login Form -->
+                    <div id="admin-login-form" class="d-none animate-fadeIn">
+                        <div class="card">
+                            <div class="card-header bg-warning text-white text-center">
+                                <h5 class="mb-0"><i class="fas fa-shield-alt"></i> Admin Login</h5>
+                            </div>
+                            <div class="card-body">
+                                <form action="{{ url_for('admin_login') }}" method="post">
+                                    <div class="mb-3">
+                                        <label for="admin_username" class="form-label">Admin Username</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fas fa-user-shield"></i></span>
+                                            <input type="text" class="form-control" id="admin_username" name="username" 
+                                                   placeholder="admin" required>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="admin_password" class="form-label">Admin Password</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fas fa-key"></i></span>
+                                            <input type="password" class="form-control" id="admin_password" name="password" 
+                                                   placeholder="Enter admin password" required>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-warning w-100">
+                                        <i class="fas fa-lock"></i> Admin Login
+                                    </button>
+                                </form>
+                                <p class="text-center text-muted mt-3">
+                                    <small>Use: admin / admin123</small>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- About the System -->
+                    <div class="card mt-4 animate-fadeIn" style="animation-delay: 0.4s;">
+                        <div class="card-header bg-info text-white text-center">
+                            <h5 class="mb-0"><i class="fas fa-info-circle"></i> About the System</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text">
+                                This system helps manage crowd flow at pilgrimage sites using AI prediction,
+                                slot booking, and real-time monitoring to ensure a safe and pleasant experience for all devotees.
+                            </p>
+                            <ul class="feature-list">
+                                <li>AI-based crowd prediction</li>
+                                <li>Time slot booking system</li>
+                                <li>QR code entry system</li>
+                                <li>Real-time monitoring dashboard</li>
+                                <li>Emergency response coordination</li>
+                                <li>Multi-temple support</li>
+                            </ul>
+                            <div class="text-center mt-3">
+                                <div class="row">
+                                    <div class="col-4">
+                                        <div class="text-primary">
+                                            <i class="fas fa-users fa-2x"></i>
+                                            <p class="mb-0 mt-2">Crowd Management</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-success">
+                                            <i class="fas fa-qrcode fa-2x"></i>
+                                            <p class="mb-0 mt-2">QR System</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-warning">
+                                            <i class="fas fa-chart-line fa-2x"></i>
+                                            <p class="mb-0 mt-2">AI Prediction</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Footer -->
+            <div class="text-center mt-4">
+                <p class="text-white">© 2024 Pilgrim Crowd Management System. Ensuring spiritual journeys remain sacred.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Toggle between user and admin login forms
+    $('#user-login-btn').click(function() {
+        $('#user-login-form').removeClass('d-none');
+        $('#admin-login-form').addClass('d-none');
+        $('#user-login-btn').addClass('active');
+        $('#admin-login-btn').removeClass('active');
+    });
+    
+    $('#admin-login-btn').click(function() {
+        $('#admin-login-form').removeClass('d-none');
+        $('#user-login-form').addClass('d-none');
+        $('#admin-login-btn').addClass('active');
+        $('#user-login-btn').removeClass('active');
+    });
+    
+    // Add animation to elements on scroll
+    $(window).scroll(function() {
+        $('.animate-fadeIn').each(function() {
+            var position = $(this).offset().top;
+            var scroll = $(window).scrollTop();
+            var windowHeight = $(window).height();
+            
+            if (scroll > position - windowHeight + 100) {
+                $(this).addClass('fadeIn');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

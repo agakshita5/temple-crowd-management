@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h2>Admin Dashboard</h2>
+        <p class="lead">Manage temple crowd and bookings</p>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5>7-Day Crowd Prediction for {{ temple_name }}</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Predicted Crowd</th>
+                                <th>Status</th>
+                                <th>Recommended Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for day in predictions %}
+                            <tr>
+                                <td>{{ day.date }}</td>
+                                <td>{{ day.prediction }} people</td>
+                                <td>
+                                    {% if day.prediction < 10000 %}
+                                    <span class="badge bg-success">Low</span>
+                                    {% elif day.prediction < 30000 %}
+                                    <span class="badge bg-warning">Moderate</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">High</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if day.prediction < 10000 %}
+                                    Normal operations
+                                    {% elif day.prediction < 30000 %}
+                                    Add extra staff
+                                    {% else %}
+                                    Implement crowd control measures
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5>Recent Bookings</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_bookings %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Booking ID</th>
+                                <th>Booking Time</th>
+                                <th>Visit Date</th>
+                                <th>Time Slot</th>
+                                <th>Temple</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for booking in recent_bookings %}
+                            <tr>
+                                <td>{{ booking[0] }}</td>
+                                <td>{{ booking[1] }}</td>
+                                <td>{{ booking[2] }}</td>
+                                <td>{{ booking[3] }}</td>
+                                <td>{{ booking[4] }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    No recent bookings found.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <h5>Admin Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('visualization') }}" class="btn btn-outline-primary w-100">View Visualization</a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-outline-info w-100">Manage Time Slots</button>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-outline-success w-100">Generate Reports</button>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-outline-danger w-100">Send Notifications</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
