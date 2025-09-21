@@ -1,46 +1,41 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>Report Incident</h2>
-    <form method="POST" enctype="multipart/form-data">
-        <div class="mb-3">
-            <label for="type" class="form-label">Incident Type</label>
-            <select class="form-select" id="type" name="type" required>
-                <option value="">Select type</option>
-                <option value="medical">Medical Emergency</option>
-                <option value="lost">Lost & Found</option>
-                <option value="safety">Safety Issue</option>
-                <option value="infrastructure">Infrastructure Problem</option>
-            </select>
+<div class="container animate-fadeIn">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header spiritual-bg text-white text-center">
+                    <h4 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Report an Incident</h4>
+                </div>
+                <div class="card-body p-4">
+                    <p class="text-center text-muted">Your safety is our priority. Please use this form to report any incidents.</p>
+                    <form>
+                        <div class="mb-3">
+                            <label for="incidentType" class="form-label">Type of Incident</label>
+                            <select class="form-select" id="incidentType" required>
+                                <option selected disabled value="">Choose...</option>
+                                <option>Medical Emergency</option>
+                                <option>Lost & Found</option>
+                                <option>Safety Concern</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="location" class="form-label">Location in Temple Premises</label>
+                            <input type="text" class="form-control" id="location" placeholder="e.g., Near Gate 4" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" rows="4" placeholder="Please provide details..." required></textarea>
+                        </div>
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-danger btn-lg">Submit Report</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
-        
-        <div class="mb-3">
-            <label for="priority" class="form-label">Priority</label>
-            <select class="form-select" id="priority" name="priority">
-                <option value="low">Low</option>
-                <option value="medium" selected>Medium</option>
-                <option value="high">High</option>
-                <option value="critical">Critical</option>
-            </select>
-        </div>
-        
-        <div class="mb-3">
-            <label for="location" class="form-label">Location</label>
-            <input type="text" class="form-control" id="location" name="location" placeholder="Where did this happen?">
-        </div>
-        
-        <div class="mb-3">
-            <label for="description" class="form-label">Description</label>
-            <textarea class="form-control" id="description" name="description" rows="4" required></textarea>
-        </div>
-        
-        <div class="mb-3">
-            <label for="image" class="form-label">Upload Image (Optional)</label>
-            <input type="file" class="form-control" id="image" name="image" accept="image/*">
-        </div>
-        
-        <button type="submit" class="btn btn-primary">Report Incident</button>
-    </form>
+    </div>
 </div>
 {% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container animate-fadeIn">
+    <h2 class="spiritual-text text-center mb-4">Live Crowd Status</h2>
+    <p class="text-center text-muted mb-4">Last updated: {{ last_updated }}</p>
+
+    <div class="row">
+        {% for temple, status in crowd_status.items() %}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="card-title spiritual-text">{{ temple }}</h4>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <p class="mb-0">Current Crowd Level:</p>
+                        {% if status == 'Low' %}
+                            <span class="badge bg-success fs-6">Low</span>
+                        {% elif status == 'Moderate' %}
+                            <span class="badge bg-warning fs-6">Moderate</span>
+                        {% else %}
+                            <span class="badge bg-danger fs-6">High</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

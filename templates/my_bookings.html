@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container animate-fadeIn">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="spiritual-text">My Bookings</h2>
+        <a href="{{ url_for('book_slot_page') }}" class="btn btn-primary"><i class="fas fa-plus me-2"></i>Book New Slot</a>
+    </div>
+
+    <div class="card">
+        <div class="card-header spiritual-bg text-white">
+            <h5 class="mb-0">Your Booking History</h5>
+        </div>
+        <div class="card-body">
+            {% if bookings %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Booking ID</th>
+                            <th>Temple</th>
+                            <th>Visit Date</th>
+                            <th>Time Slot</th>
+                            <th>Status</th>
+                            <th>QR Code</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for booking in bookings %}
+                        <tr>
+                            <td><strong>#{{ booking[0] }}</strong></td>
+                            <td>{{ booking[4] }}</td>
+                            <td>{{ booking[2] }}</td>
+                            <td>{{ booking[3] }}</td>
+                            <td>
+                                {% if booking[5] == 'confirmed' %}
+                                <span class="badge bg-success">Confirmed</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ booking[5]|capitalize }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-dark" data-bs-toggle="modal" data-bs-target="#qrModal{{ booking[0] }}">
+                                    <i class="fas fa-qrcode"></i> View
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center p-4">
+                <p class="lead">You have no bookings yet.</p>
+                <p>Start your spiritual journey by booking a slot.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% for booking in bookings %}
+<div class="modal fade" id="qrModal{{ booking[0] }}" tabindex="-1" aria-labelledby="qrModalLabel{{ booking[0] }}" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="qrModalLabel{{ booking[0] }}">Your QR Ticket for Booking #{{ booking[0] }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center">
+        <div class="qr-code">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={{ booking[1] }}" alt="QR Code">
+        </div>
+        <p class="mt-3">Show this code at the temple entrance.</p>
+        <p><strong>Valid for:</strong> {{ booking[2] }} at {{ booking[3] }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+{% endblock %}

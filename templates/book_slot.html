@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pilgrim - Temple Slot Booking</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root {
+            --primary: #4361ee;
+            --secondary: #3a0ca3;
+            --success: #4cc9f0;
+            --warning: #f72585;
+            --info: #7209b7;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --spiritual: #8B4513;
+            --gold: #FFD700;
+            --gradient: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
+            --spiritual-gradient: linear-gradient(135deg, #8B4513 0%, #CD853F 100%);
+            --shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            --border-radius: 15px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #f5f5dc 0%, #faf0e6 100%);
+            min-height: 100vh;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+
+        .navbar {
+            background: rgba(139, 69, 19, 0.95) !important;
+            backdrop-filter: blur(10px);
+            box-shadow: var(--shadow);
+            padding: 1rem 0;
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.8rem;
+            color: white !important;
+        }
+
+        .container {
+            padding: 2rem 0;
+        }
+
+        .card {
+            border: none;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-header {
+            background: var(--spiritual-gradient);
+            color: white;
+            border: none;
+            padding: 1.5rem;
+            font-weight: 600;
+        }
+
+        .btn {
+            border-radius: 25px;
+            padding: 0.8rem 2rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: var(--spiritual-gradient);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .temple-card {
+            cursor: pointer;
+            transition: all 0.3s;
+            height: 100%;
+        }
+
+        .temple-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .temple-card.selected {
+            border: 3px solid var(--spiritual);
+        }
+
+        .slot-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .slot-card:hover {
+            border-color: var(--spiritual);
+            transform: translateY(-5px);
+        }
+
+        .slot-card.booked {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .progress {
+            height: 10px;
+            border-radius: 5px;
+        }
+
+        .qr-code {
+            width: 200px;
+            height: 200px;
+            margin: 1rem auto;
+            padding: 1rem;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            border: 3px solid var(--spiritual);
+        }
+
+        .booking-timeline {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .booking-timeline::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--spiritual);
+            z-index: 1;
+        }
+
+        .timeline-step {
+            text-align: center;
+            position: relative;
+            z-index: 2;
+            flex: 1;
+        }
+
+        .timeline-step .icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: white;
+            border: 3px solid var(--spiritual);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 10px;
+            font-weight: bold;
+        }
+
+        .timeline-step.active .icon {
+            background: var(--spiritual);
+            color: white;
+        }
+
+        .timeline-step.completed .icon {
+            background: var(--spiritual);
+            color: white;
+        }
+
+        .slot-type-btn {
+            padding: 1rem;
+            font-size: 1.2rem;
+            margin: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .card-body {
+                padding: 1.5rem;
+            }
+            
+            .btn {
+                padding: 0.7rem 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-temple me-2"></i>Pilgrim
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link text-white" href="#">
+                    <i class="fas fa-user me-1"></i>Welcome, Devotee
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Main Booking Screen -->
+        <div id="booking-screen">
+            <div class="booking-timeline">
+                <div class="timeline-step active">
+                    <div class="icon">1</div>
+                    <div class="text">Select Temple</div>
+                </div>
+                <div class="timeline-step">
+                    <div class="icon">2</div>
+                    <div class="text">Choose Slot</div>
+                </div>
+                <div class="timeline-step">
+                    <div class="icon">3</div>
+                    <div class="text">Your Details</div>
+                </div>
+                <div class="timeline-step">
+                    <div class="icon">4</div>
+                    <div class="text">Get QR Ticket</div>
+                </div>
+            </div>
+
+            <!-- Temple Selection View -->
+            <div id="temple-selection">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-temple me-2"></i>Select a Temple in Gujarat</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <div class="card temple-card" data-temple="somnath">
+                                    <img src="https://via.placeholder.com/300x200?text=Somnath+Temple" class="card-img-top" alt="Somnath Temple">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Somnath Temple</h5>
+                                        <p class="card-text">Veraval, Gujarat</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card temple-card" data-temple="dwarka">
+                                    <img src="https://via.placeholder.com/300x200?text=Dwarka+Temple" class="card-img-top" alt="Dwarka Temple">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Dwarka Temple</h5>
+                                        <p class="card-text">Dwarka, Gujarat</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card temple-card" data-temple="ambaji">
+                                    <img src="https://via.placeholder.com/300x200?text=Ambaji+Temple" class="card-img-top" alt="Ambaji Temple">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Ambaji Temple</h5>
+                                        <p class="card-text">Banaskantha, Gujarat</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card temple-card" data-temple="pavagadh">
+                                    <img src="https://via.placeholder.com/300x200?text=Pavagadh+Temple" class="card-img-top" alt="Pavagadh Temple">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Pavagadh Temple</h5>
+                                        <p class="card-text">Pavagadh, Gujarat</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card temple-card" data-temple="sabarimala">
+                                    <img src="https://via.placeholder.com/300x200?text=Sabarimala+Temple" class="card-img-top" alt="Sabarimala Temple">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Sabarimala Temple</h5>
+                                        <p class="card-text">Sabarimala, Gujarat</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card temple-card" data-temple="akshardham">
+                                    <img src="https://via.placeholder.com/300x200?text=Akshardham+Temple" class="card-img-top" alt="Akshardham Temple">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Akshardham Temple</h5>
+                                        <p class="card-text">Gandhinagar, Gujarat</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slot Type Selection View -->
+            <div id="slot-type-selection" style="display: none;">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-clock me-2"></i>Select Time Slot Type</h5>
+                    </div>
+                    <div class="card-body text-center">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <button class="btn btn-primary w-100 slot-type-btn" data-type="morning">
+                                    <i class="fas fa-sun me-2"></i>Morning Slots<br>
+                                    <small>6:00 AM - 12:00 PM</small>
+                                </button>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <button class="btn btn-warning w-100 slot-type-btn" data-type="afternoon">
+                                    <i class="fas fa-cloud-sun me-2"></i>Afternoon Slots<br>
+                                    <small>12:00 PM - 4:00 PM</small>
+                                </button>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <button class="btn btn-info w-100 slot-type-btn text-white" data-type="evening">
+                                    <i class="fas fa-moon me-2"></i>Evening Slots<br>
+                                    <small>4:00 PM - 8:00 PM</small>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Specific Slot Selection View -->
+            <div id="specific-slot-selection" style="display: none;">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-calendar-day me-2"></i>Select Specific Time Slot</h5>
+                    </div>
+                    <div class="card-body">
+                        <h6 id="slot-type-title" class="mb-3">Morning Slots</h6>
+                        <div class="row" id="slot-container">
+                            <!-- Slots will be dynamically generated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Information Form -->
+            <div id="user-info-form" style="display: none;">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-user-circle me-2"></i>Visitor Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="visitor-form">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="fullname" class="form-label">Full Name *</label>
+                                    <input type="text" class="form-control" id="fullname" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="age" class="form-label">Age *</label>
+                                    <input type="number" class="form-control" id="age" min="1" max="120" required>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="phone" class="form-label">Phone Number *</label>
+                                    <input type="tel" class="form-control" id="phone" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="email" class="form-label">Email Address *</label>
+                                    <input type="email" class="form-control" id="email-info" required>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="address" class="form-label">Address *</label>
+                                <textarea class="form-control" id="address" rows="3" required></textarea>
+                            </div>
+                            <div class="text-center">
+                                <button type="submit" class="btn btn-primary btn-lg">Proceed to Generate QR</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- QR Generation View -->
+            <div id="qr-generation" style="display: none;">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-ticket-alt me-2"></i>Booking Confirmation</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row mb-4">
+                                    <div class="col-md-6">
+                                        <h6>Temple Details</h6>
+                                        <div class="d-flex align-items-center">
+                                            <img src="https://via.placeholder.com/80x80?text=🛕" class="rounded me-3" alt="Temple">
+                                            <div>
+                                                <h5 id="selected-temple">Somnath Temple</h5>
+                                                <p class="mb-0 text-muted" id="temple-location">Veraval, Gujarat</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>Slot Details</h6>
+                                        <div class="bg-light p-3 rounded">
+                                            <div class="d-flex justify-content-between">
+                                                <span>Date:</span>
+                                                <strong id="booking-date">15 Oct 2023</strong>
+                                            </div>
+                                            <div class="d-flex justify-content-between">
+                                                <span>Time Slot:</span>
+                                                <strong id="booking-slot">08:00 - 09:30 AM</strong>
+                                            </div>
+                                            <div class="d-flex justify-content-between">
+                                                <span>Duration:</span>
+                                                <strong>1.5 hours</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Your QR code will be valid for <strong>1.5 hours</strong> from the start of your time slot.
+                                    Please ensure you exit before your slot ends to avoid penalties.
+                                </div>
+
+                                <div class="text-center mt-4">
+                                    <button class="btn btn-primary btn-lg" id="generate-qr-btn">
+                                        <i class="fas fa-qrcode me-2"></i>Generate QR Ticket
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-qrcode me-2"></i>Your QR Ticket</h5>
+                            </div>
+                            <div class="card-body text-center">
+                                <div id="qr-code" class="qr-code mb-3">
+                                    <p class="text-muted">QR code will appear here</p>
+                                </div>
+                                
+                                <div class="booking-details">
+                                    <p class="mb-1">Booking ID: <strong id="booking-id">PIL-938472</strong></p>
+                                    <p class="mb-1">Valid until: <strong id="valid-until">15 Oct 2023, 09:30 AM</strong></p>
+                                    <p class="mb-0">Status: <span class="badge bg-success" id="qr-status">Not Generated</span></p>
+                                </div>
+
+                                <hr class="my-4">
+
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-outline-primary" id="download-btn" disabled>
+                                        <i class="fas fa-download me-2"></i>Download QR
+                                    </button>
+                                    <button class="btn btn-outline-secondary" id="email-btn" disabled>
+                                        <i class="fas fa-envelope me-2"></i>Email Ticket
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Current state tracking
+            let currentState = {
+                temple: null,
+                slotType: null,
+                specificSlot: null,
+                userInfo: null
+            };
+
+            // Temple data with locations
+            const templeData = {
+                somnath: { name: "Somnath Temple", location: "Veraval, Gujarat" },
+                dwarka: { name: "Dwarka Temple", location: "Dwarka, Gujarat" },
+                ambaji: { name: "Ambaji Temple", location: "Banaskantha, Gujarat" },
+                pavagadh: { name: "Pavagadh Temple", location: "Pavagadh, Gujarat" },
+                sabarimala: { name: "Sabarimala Temple", location: "Sabarimala, Gujarat" },
+                akshardham: { name: "Akshardham Temple", location: "Gandhinagar, Gujarat" }
+            };
+
+            // Temple selection
+            const templeCards = document.querySelectorAll('.temple-card');
+            templeCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    templeCards.forEach(c => c.classList.remove('selected'));
+                    this.classList.add('selected');
+                    currentState.temple = this.getAttribute('data-temple');
+                    
+                    // Update timeline
+                    document.querySelectorAll('.timeline-step').forEach((step, index) => {
+                        if (index === 0) step.classList.add('completed');
+                        if (index === 1) step.classList.add('active');
+                        if (index > 1) step.classList.remove('active', 'completed');
+                    });
+                    
+                    // Show slot type selection
+                    document.getElementById('temple-selection').style.display = 'none';
+                    document.getElementById('slot-type-selection').style.display = 'block';
+                });
+            });
+
+            // Slot type selection
+            const slotTypeButtons = document.querySelectorAll('.slot-type-btn');
+            slotTypeButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    currentState.slotType = this.getAttribute('data-type');
+                    
+                    // Update timeline
+                    document.querySelectorAll('.timeline-step').forEach((step, index) => {
+                        if (index <= 1) step.classList.add('completed');
+                        if (index === 2) step.classList.add('active');
+                        if (index > 2) step.classList.remove('active', 'completed');
+                    });
+                    
+                    // Update slot type title
+                    document.getElementById('slot-type-title').textContent = 
+                        `${this.textContent.split('\n')[0]} Slots`;
+                    
+                    // Generate slots based on type
+                    generateSlots(currentState.slotType);
+                    
+                    // Show specific slot selection
+                    document.getElementById('slot-type-selection').style.display = 'none';
+                    document.getElementById('specific-slot-selection').style.display = 'block';
+                });
+            });
+
+            // Generate slots based on type
+            function generateSlots(type) {
+                const slotContainer = document.getElementById('slot-container');
+                slotContainer.innerHTML = '';
+                
+                let slots = [];
+                
+                if (type === 'morning') {
+                    slots = [
+                        { time: '06:00 - 07:30', available: 45, total: 100 },
+                        { time: '07:30 - 09:00', available: 120, total: 200 },
+                        { time: '09:00 - 10:30', available: 75, total: 150 },
+                        { time: '10:30 - 12:00', available: 30, total: 100 }
+                    ];
+                } else if (type === 'afternoon') {
+                    slots = [
+                        { time: '12:00 - 13:30', available: 90, total: 150 },
+                        { time: '13:30 - 15:00', available: 60, total: 120 },
+                        { time: '15:00 - 16:30', available: 110, total: 200 }
+                    ];
+                } else if (type === 'evening') {
+                    slots = [
+                        { time: '16:30 - 18:00', available: 80, total: 150 },
+                        { time: '18:00 - 19:30', available: 40, total: 100 },
+                        { time: '19:30 - 21:00', available: 25, total: 80 }
+                    ];
+                }
+                
+                slots.forEach(slot => {
+                    const percentage = (slot.available / slot.total) * 100;
+                    const col = document.createElement('div');
+                    col.className = 'col-md-6 mb-3';
+                    
+                    col.innerHTML = `
+                        <div class="card slot-card" data-slot="${slot.time}">
+                            <div class="card-body">
+                                <h5 class="card-title">${slot.time}</h5>
+                                <p class="card-text">${slot.available} of ${slot.total} slots available</p>
+                                <div class="progress mb-2">
+                                    <div class="progress-bar" role="progressbar" 
+                                         style="width: ${percentage}%" 
+                                         aria-valuenow="${percentage}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100">
+                                    </div>
+                                </div>
+                                <button class="btn btn-primary btn-sm select-slot">Select Slot</button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    slotContainer.appendChild(col);
+                });
+                
+                // Add event listeners to slot selection buttons
+                setTimeout(() => {
+                    const selectButtons = document.querySelectorAll('.select-slot');
+                    selectButtons.forEach(button => {
+                        button.addEventListener('click', function() {
+                            const slotCard = this.closest('.slot-card');
+                            const slotTime = slotCard.getAttribute('data-slot');
+                            currentState.specificSlot = slotTime;
+                            
+                            // Update timeline
+                            document.querySelectorAll('.timeline-step').forEach((step, index) => {
+                                if (index <= 2) step.classList.add('completed');
+                                if (index === 3) step.classList.add('active');
+                            });
+                            
+                            // Show user information form
+                            document.getElementById('specific-slot-selection').style.display = 'none';
+                            document.getElementById('user-info-form').style.display = 'block';
+                        });
+                    });
+                }, 100);
+            }
+
+            // User information form submission
+            document.getElementById('visitor-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Collect user information
+                currentState.userInfo = {
+                    name: document.getElementById('fullname').value,
+                    age: document.getElementById('age').value,
+                    phone: document.getElementById('phone').value,
+                    email: document.getElementById('email-info').value,
+                    address: document.getElementById('address').value
+                };
+                
+                // Update booking details
+                document.getElementById('selected-temple').textContent = templeData[currentState.temple].name;
+                document.getElementById('temple-location').textContent = templeData[currentState.temple].location;
+                document.getElementById('booking-slot').textContent = currentState.specificSlot;
+                
+                // Set a random booking date (within next 7 days)
+                const today = new Date();
+                const randomDays = Math.floor(Math.random() * 7);
+                const bookingDate = new Date();
+                bookingDate.setDate(today.getDate() + randomDays);
+                document.getElementById('booking-date').textContent = 
+                    bookingDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+                
+                // Calculate valid until time
+                const slotStart = parseInt(currentState.specificSlot.split(' - ')[0].split(':')[0]);
+                const validUntil = new Date(bookingDate);
+                validUntil.setHours(slotStart + 1, 30, 0, 0);
+                document.getElementById('valid-until').textContent = 
+                    validUntil.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) + ', ' +
+                    validUntil.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                
+                // Generate random booking ID
+                document.getElementById('booking-id').textContent = 'PIL-' + 
+                    Math.floor(100000 + Math.random() * 900000);
+                
+                // Show QR generation section
+                document.getElementById('user-info-form').style.display = 'none';
+                document.getElementById('qr-generation').style.display = 'block';
+            });
+
+            // Generate QR code when button is clicked
+            document.getElementById('generate-qr-btn').addEventListener('click', function() {
+                const bookingId = document.getElementById('booking-id').textContent;
+                const qrElement = document.getElementById('qr-code');
+                
+                // Clear previous QR code
+                qrElement.innerHTML = '';
+                
+                // Generate new QR code
+                const qrcode = new QRCode(qrElement, {
+                    text: `PILGRIM-BOOKING:${bookingId}:TEMPLE:${currentState.temple.toUpperCase()}:SLOT:${currentState.specificSlot}:VALID:1.5`,
+                    width: 180,
+                    height: 180,
+                    colorDark : "#000000",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+                
+                // Update status and enable buttons
+                document.getElementById('qr-status').textContent = 'Active';
+                document.getElementById('qr-status').className = 'badge bg-success';
+                document.getElementById('download-btn').disabled = false;
+                document.getElementById('email-btn').disabled = false;
+                
+                // Change button text and style
+                this.innerHTML = '<i class="fas fa-sync-alt me-2"></i>Regenerate QR';
+                this.classList.remove('btn-primary');
+                this.classList.add('btn-secondary');
+            });
+
+            // Download QR code
+            document.getElementById('download-btn').addEventListener('click', function() {
+                alert('QR code download functionality would be implemented here.');
+            });
+
+            // Email ticket
+            document.getElementById('email-btn').addEventListener('click', function() {
+                alert('Email ticket functionality would be implemented here.');
+            });
+        });
+    </script>
+</body>
+</html>

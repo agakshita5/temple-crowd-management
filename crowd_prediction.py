@@ -1,214 +1,70 @@
-# # crowd_prediction.py
-# import pandas as pd
-# from datetime import datetime
-# import sqlite3
-# import random
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+from xgboost import XGBClassifier
+from sklearn.metrics import accuracy_score
+import joblib
 
-# def predict_crowd(date, temple_name):
-#     # Connect to database to get historical data
-#     conn = sqlite3.connect('pilgrim.db')
-    
-#     # For this demo, we'll use a simple prediction algorithm
-#     # In a real application, you would use a trained ML model
-    
-#     # Factors affecting crowd:
-#     day_of_week = date.weekday()  # 0=Monday, 6=Sunday
-#     is_weekend = 1 if day_of_week >= 5 else 0
-#     month = date.month
-    
-#     # Check if it's a holiday (simplified)
-#     holidays = [
-#         (1, 1),   # New Year
-#         (1, 14),  # Makar Sankranti
-#         (3, 8),   # Holi (approx)
-#         (8, 15),  # Independence Day
-#         (10, 2),  # Gandhi Jayanti
-#         (12, 25)  # Christmas
-#     ]
-    
-#     is_holiday = 1 if (month, date.day) in holidays else 0
-    
-#     # Base crowd for the temple
-#     base_crowd = {
-#         "Somnath": 15000,
-#         "Dwarka": 12000,
-#         "Ambaji": 10000,
-#         "Pavagadh": 8000
-#     }.get(temple_name, 10000)
-    
-#     # Adjust based on factors
-#     weekend_factor = 1.5 if is_weekend else 1
-#     holiday_factor = 2.0 if is_holiday else 1
-#     month_factor = 1.2 if month in [10, 11, 12] else 1  # Festival season
-    
-#     predicted_crowd = base_crowd * weekend_factor * holiday_factor * month_factor
-    
-#     # Add some random variation
-#     variation = random.uniform(0.9, 1.1)
-#     predicted_crowd = int(predicted_crowd * variation)
-    
-#     conn.close()
-#     return predicted_crowd
+df = pd.read_csv('admin/synthetic_gujarat_temple_crowd.csv')
 
-# def initialize_historical_data():
-#     # This function would load the provided CSV into the database
-#     # For this demo, we'll just create some sample data
-#     conn = sqlite3.connect('pilgrim.db')
-#     cursor = conn.cursor()
-    
-#     # Create table if not exists
-#     cursor.execute('''
-#         CREATE TABLE IF NOT EXISTS historical_data (
-#             id INTEGER PRIMARY KEY,
-#             date TEXT,
-#             temple_name TEXT,
-#             estimated_footfall INTEGER
-#         )
-#     ''')
-    
-#     # Check if data already exists
-#     cursor.execute('SELECT COUNT(*) FROM historical_data')
-#     count = cursor.fetchone()[0]
-    
-#     if count == 0:
-#         # Insert sample data
-#         temples = ["Somnath", "Dwarka", "Ambaji", "Pavagadh"]
-#         for i in range(60):
-#             date = (datetime.now() - timedelta(days=i)).date()
-#             temple = random.choice(temples)
-#             footfall = predict_crowd(date, temple)
-            
-#             cursor.execute('''
-#                 INSERT INTO historical_data (date, temple_name, estimated_footfall)
-#                 VALUES (?, ?, ?)
-#             ''', (date.isoformat(), temple, footfall))
-    
-#     conn.commit()
-#     conn.close()
+# Prepare features and target
+X = df[['day_of_week', 'month', 'festival_flag', 'darshan_slot', 'holiday_flag', 'season', 'special_event_flag']]
+y = df['crowd_level']
+
+# Encode categorical variables
+le_day = LabelEncoder()
+le_slot = LabelEncoder()
 
 
-# import sqlite3
-# from datetime import datetime
-# import random
-# import pandas as pd
+X_encoded = X.copy() # fix the SettingWithCopyWarning by using .copy()
+X_encoded['day_of_week'] = le_day.fit_transform(X['day_of_week'])
+X_encoded['darshan_slot'] = le_slot.fit_transform(X['darshan_slot'])
 
-# def predict_crowd(date, temple_name):
-#     """
-#     Predict crowd based on historical data and external factors
-#     """
-#     # Connect to database
-#     conn = sqlite3.connect('pilgrim.db')
+X_train, X_test, y_train, y_test = train_test_split(X_encoded, y, test_size=0.2, random_state=42, stratify=y)
+
+model = XGBClassifier(
+    n_estimators=100, 
+    random_state=42, 
+    objective='multi:softprob',
+    num_class=3, 
+    eval_metric='mlogloss'
+)
+model.fit(X_train, y_train)
+
+# Evaluate
+y_pred = model.predict(X_test)
+accuracy = accuracy_score(y_test, y_pred)
+print(f"Model Accuracy: {accuracy:.2f}")
+
+joblib.dump(model, 'admin/crowd_prediction_model.pkl')
+joblib.dump(le_day, 'admin/day_encoder.pkl')
+joblib.dump(le_slot, 'admin/slot_encoder.pkl')
+print("Model and encoders saved successfully!")
+
+# predictions
+def predict_crowd(day_of_week, month, festival_flag, darshan_slot, holiday_flag, season, special_event_flag):
+
+    model = joblib.load('admin/crowd_prediction_model.pkl')
+    le_day = joblib.load('admin/day_encoder.pkl')
+    le_slot = joblib.load('admin/slot_encoder.pkl')
     
-#     # Get day of week and month
-#     day_of_week = date.weekday()  # 0=Monday, 6=Sunday
-#     is_weekend = 1 if day_of_week >= 5 else 0
-#     month = date.month
+    try:
+        encoded_day = le_day.transform([day_of_week])[0]
+    except:
+        encoded_day = le_day.transform(['Monday'])[0]  
     
-#     # Check if it's a holiday (simplified list)
-#     holidays = [
-#         (1, 1),   # New Year
-#         (1, 14),  # Makar Sankranti
-#         (3, 8),   # Holi (approx)
-#         (8, 15),  # Independence Day
-#         (10, 2),  # Gandhi Jayanti
-#         (12, 25)  # Christmas
-#     ]
+    try:
+        encoded_slot = le_slot.transform([darshan_slot])[0]
+    except:
+        encoded_slot = le_slot.transform(['6-7'])[0]  
     
-#     is_holiday = 1 if (month, date.day) in holidays else 0
+    features = np.array([[encoded_day, month, festival_flag, encoded_slot, holiday_flag, season, special_event_flag]])
     
-#     # Base crowd for the temple
-#     base_crowd = {
-#         "Somnath": 15000,
-#         "Dwarka": 12000,
-#         "Ambaji": 10000,
-#         "Pavagadh": 8000
-#     }.get(temple_name, 10000)
+    prediction = model.predict(features)[0]
     
-#     # Adjust based on factors
-#     weekend_factor = 1.5 if is_weekend else 1
-#     holiday_factor = 2.0 if is_holiday else 1
-#     month_factor = 1.2 if month in [10, 11, 12] else 1  # Festival season
-    
-#     predicted_crowd = base_crowd * weekend_factor * holiday_factor * month_factor
-    
-#     # Add some random variation
-#     variation = random.uniform(0.9, 1.1)
-#     predicted_crowd = int(predicted_crowd * variation)
-    
-#     # Save prediction to historical data
-#     cursor = conn.cursor()
-#     cursor.execute('''
-#         INSERT OR REPLACE INTO historical_data (date, temple_name, estimated_footfall)
-#         VALUES (?, ?, ?)
-#     ''', (date.date().isoformat(), temple_name, predicted_crowd))
-    
-#     conn.commit()
-#     conn.close()
-    
-#     return predicted_crowd
+    crowd_levels = {0: 'Low', 1: 'Medium', 2: 'High'}
+    return crowd_levels[prediction]
 
-# def get_crowd_level(prediction):
-#     """
-#     Return crowd level based on prediction
-#     """
-#     if prediction < 10000:
-#         return "Low"
-#     elif prediction < 30000:
-#         return "Moderate"
-#     else:
-#         return "High"
-
-# def get_recommendation(prediction):
-#     """
-#     Get recommendation based on crowd prediction
-#     """
-#     if prediction < 10000:
-#         return "Good time to visit"
-#     elif prediction < 30000:
-#         return "Moderate crowding expected"
-#     else:
-#         return "High crowding expected - consider another day"
-
-
-
-import sqlite3
-from datetime import datetime
-import random
-
-def predict_crowd(date, temple_name):
-    conn = sqlite3.connect('pilgrim.db')
-    
-    day_of_week = date.weekday()
-    is_weekend = 1 if day_of_week >= 5 else 0
-    month = date.month
-
-    holidays = [(1,1),(1,14),(3,8),(8,15),(10,2),(12,25)]
-    is_holiday = 1 if (month, date.day) in holidays else 0
-
-    base_crowd = {"Somnath":15000,"Dwarka":12000,"Ambaji":10000,"Pavagadh":8000}.get(temple_name,10000)
-
-    weekend_factor = 1.5 if is_weekend else 1
-    holiday_factor = 2.0 if is_holiday else 1
-    month_factor = 1.2 if month in [10,11,12] else 1
-
-    predicted_crowd = int(base_crowd * weekend_factor * holiday_factor * month_factor * random.uniform(0.9,1.1))
-
-    cursor = conn.cursor()
-    cursor.execute('''
-        INSERT OR REPLACE INTO historical_data (date, temple_name, estimated_footfall)
-        VALUES (?, ?, ?)
-    ''', (date.date().isoformat(), temple_name, predicted_crowd))
-    
-    conn.commit()
-    conn.close()
-    return predicted_crowd
-
-def get_crowd_level(prediction):
-    if prediction < 10000: return "Low"
-    elif prediction < 30000: return "Moderate"
-    else: return "High"
-
-def get_recommendation(prediction):
-    if prediction < 10000: return "Good time to visit"
-    elif prediction < 30000: return "Moderate crowding expected"
-    else: return "High crowding expected - consider another day"
+test_prediction = predict_crowd('Sunday', 10, 1, '6-7', 1, 4, 0)
+print(f"\nTest prediction : {test_prediction}")

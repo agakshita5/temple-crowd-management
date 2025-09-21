@@ -83,4 +83,4 @@ df = pd.DataFrame(rows)
 print(f"Unique crowd levels: {df['crowd_level'].unique()}")
 print(f"Count of each crowd level:\n{df['crowd_level'].value_counts()}")
 
-df.to_csv('admin/synthetic_gujarat_temple_crowd.csv', index=False)
+df.to_csv('data/synthetic_gujarat_temple_crowd.csv', index=False)
