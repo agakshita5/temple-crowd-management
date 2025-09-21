@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Temple QR Scanner</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    #result { font-size: 18px; margin-top: 20px; padding: 10px; border: 1px solid #ccc; }
+    .valid { color: green; font-weight: bold; }
+    .expired { color: orange; font-weight: bold; }
+    .invalid { color: red; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h2>Temple Booking QR Scanner</h2>
+  <div id="reader" style="width:300px"></div>
+  <div id="result">Scan a QR code...</div>
+
+  <script>
+    function onScanSuccess(decodedText, decodedResult) {
+      fetch("/verify/" + decodedText)
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === "valid") {
+            document.getElementById("result").innerHTML = `
+              ✅ <span class="valid">Valid Booking</span><br>
+              <b>Temple:</b> ${data.temple}<br>
+              <b>Slot:</b> ${data.slot}<br>
+              <b>Name:</b> ${data.name}<br>
+              <b>Booking ID:</b> ${data.booking_id}<br>
+              <b>Valid Until:</b> ${data.valid_until}
+            `;
+          } else if (data.status === "expired") {
+            document.getElementById("result").innerHTML = `
+              ⚠️ <span class="expired">Expired Booking</span><br>
+              <b>Temple:</b> ${data.temple}<br>
+              <b>Slot:</b> ${data.slot}<br>
+              <b>Name:</b> ${data.name}<br>
+              <b>Booking ID:</b> ${data.booking_id}<br>
+              <b>Valid Until:</b> ${data.valid_until}
+            `;
+          } else {
+            document.getElementById("result").innerHTML = "❌ <span class='invalid'>Invalid QR Code</span>";
+          }
+        })
+        .catch(() => {
+          document.getElementById("result").innerHTML = "❌ <span class='invalid'>Invalid QR Code</span>";
+        });
+    }
+
+    let scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+    scanner.render(onScanSuccess);
+  </script>
+</body>
+</html>

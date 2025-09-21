@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Complete Your Donation</h2>
+
+<div class="payment-info">
+    <p><strong>Amount:</strong> ₹{{ amount }}</p>
+    <p><strong>Payment Method:</strong> Credit/Debit Card</p>
+</div>
+
+<script src="https://js.stripe.com/v3/"></script>
+<form id="payment-form">
+    <div class="form-group">
+        <label for="card-element">Card Details:</label>
+        <div id="card-element" class="form-control"></div>
+    </div>
+    
+    <button id="submit" class="btn btn-primary">Pay ₹{{ amount }}</button>
+    <div id="error-message" class="alert alert-danger" style="display: none;"></div>
+</form>
+
+<div class="alternative-payment">
+    <p>Prefer UPI? <a href="{{ url_for('donate') }}">Go back to choose UPI QR payment</a></p>
+</div>
+
+<script>
+const stripe = Stripe("{{ stripe_key }}");
+const elements = stripe.elements();
+
+const card = elements.create("card", {
+    style: {
+        base: {
+            fontSize: '16px',
+            color: '#424770',
+            '::placeholder': {
+                color: '#aab7c4',
+            },
+        },
+    },
+});
+
+card.mount("#card-element");
+
+const form = document.getElementById("payment-form");
+const submitButton = document.getElementById("submit");
+const errorMessage = document.getElementById("error-message");
+
+form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    
+    // Disable submit button to prevent multiple submissions
+    submitButton.disabled = true;
+    submitButton.textContent = "Processing...";
+    errorMessage.style.display = 'none';
+
+    const { paymentIntent, error } = await stripe.confirmCardPayment(
+        "{{ client_secret }}",
+        {
+            payment_method: {
+                card: card,
+                billing_details: {
+                    name: "{{ session.username }}",
+                    email: "{{ session.email }}"
+                }
+            }
+        }
+    );
+
+    if (error) {
+        errorMessage.textContent = error.message;
+        errorMessage.style.display = 'block';
+        submitButton.disabled = false;
+        submitButton.textContent = "Pay ₹{{ amount }}";
+    } else {
+        // Payment successful
+        alert("✅ Payment successful! Thank you for your donation.");
+        window.location.href = "{{ url_for('user_dashboard') }}";
+    }
+});
+
+// Handle real-time validation errors
+card.addEventListener('change', ({error}) => {
+    if (error) {
+        errorMessage.textContent = error.message;
+        errorMessage.style.display = 'block';
+    } else {
+        errorMessage.style.display = 'none';
+    }
+});
+</script>
+
+<style>
+#card-element {
+    padding: 10px;
+    min-height: 40px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.alert {
+    margin-top: 15px;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.alternative-payment {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    text-align: center;
+}
+</style>
+{% endblock %}

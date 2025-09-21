@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Report Incident</h2>
+    <form method="POST" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label for="type" class="form-label">Incident Type</label>
+            <select class="form-select" id="type" name="type" required>
+                <option value="">Select type</option>
+                <option value="medical">Medical Emergency</option>
+                <option value="lost">Lost & Found</option>
+                <option value="safety">Safety Issue</option>
+                <option value="infrastructure">Infrastructure Problem</option>
+            </select>
+        </div>
+        
+        <div class="mb-3">
+            <label for="priority" class="form-label">Priority</label>
+            <select class="form-select" id="priority" name="priority">
+                <option value="low">Low</option>
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+            </select>
+        </div>
+        
+        <div class="mb-3">
+            <label for="location" class="form-label">Location</label>
+            <input type="text" class="form-control" id="location" name="location" placeholder="Where did this happen?">
+        </div>
+        
+        <div class="mb-3">
+            <label for="description" class="form-label">Description</label>
+            <textarea class="form-control" id="description" name="description" rows="4" required></textarea>
+        </div>
+        
+        <div class="mb-3">
+            <label for="image" class="form-label">Upload Image (Optional)</label>
+            <input type="file" class="form-control" id="image" name="image" accept="image/*">
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Report Incident</button>
+    </form>
+</div>
+{% endblock %}

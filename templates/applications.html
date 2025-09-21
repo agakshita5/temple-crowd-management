@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>My Applications</h2>
+    <p class="text-muted">View all your bookings and other temple-related applications</p>
+
+    <!-- Temple Slot Bookings -->
+    <h4 class="mt-4">Temple Slot Bookings</h4>
+    {% if bookings %}
+    <table class="table table-striped mt-2">
+        <thead class="table-dark">
+            <tr>
+                <th>#</th>
+                <th>Temple</th>
+                <th>Slot</th>
+                <th>Persons</th>
+                <th>Status</th>
+                <th>Booking Time</th>
+                <th>QR</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for booking in bookings %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ booking[1] }}</td>
+                <td>{{ booking[2] }}</td>
+                <td>{{ booking[5] }}</td>
+                <td>
+                    {% if booking[4] == 'confirmed' %}
+                        <span class="badge bg-success">Confirmed</span>
+                    {% elif booking[4] == 'pending' %}
+                        <span class="badge bg-warning text-dark">Pending</span>
+                    {% else %}
+                        <span class="badge bg-danger">Rejected</span>
+                    {% endif %}
+                </td>
+                <td>{{ booking[3] }}</td>
+                <td>
+                    <a href="{{ url_for('download_qr', booking_id=booking[0]) }}" class="btn btn-sm btn-primary">Download QR</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <div class="alert alert-info mt-2">You have no bookings yet.</div>
+    {% endif %}
+
+    <!-- Other Applications -->
+    <h4 class="mt-5">Other Applications</h4>
+    <div class="row mt-3">
+        {% for app in other_apps %}
+        <div class="col-md-4 mb-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">{{ app.name }}</h5>
+                    <p class="card-text">{{ app.description }}</p>
+                    {% if app.name == "Medical Emergency" %}
+                        <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#medicalEmergencyModal">
+                            Request Help
+                        </button>
+                    {% else %}
+                        <a href="{{ app.link }}" class="btn btn-primary btn-sm">Go</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Medical Emergency Modal -->
+<div class="modal fade" id="medicalEmergencyModal" tabindex="-1" aria-labelledby="medicalEmergencyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="medicalEmergencyModalLabel">
+                    <i class="fas fa-ambulance me-2"></i>Medical Emergency Assistance
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Emergency Alert:</strong> This will notify temple administration and nearby medical services immediately.
+                </div>
+
+                <!-- Emergency Contacts -->
+                <div class="mb-4">
+                    <h6 class="text-danger"><i class="fas fa-phone me-2"></i>Emergency Contacts</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card mb-2">
+                                <div class="card-body py-2">
+                                    <h6 class="card-title mb-1">Temple Medical Room</h6>
+                                    <p class="card-text mb-0">
+                                        <i class="fas fa-phone text-success me-2"></i>
+                                        <a href="tel:+911234567890">+91 1234567890</a>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card mb-2">
+                                <div class="card-body py-2">
+                                    <h6 class="card-title mb-1">Nearest Hospital</h6>
+                                    <p class="card-text mb-0">
+                                        <i class="fas fa-phone text-success me-2"></i>
+                                        <a href="tel:+911234567891">+91 1234567891</a>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card mb-2">
+                                <div class="card-body py-2">
+                                    <h6 class="card-title mb-1">Ambulance Service</h6>
+                                    <p class="card-text mb-0">
+                                        <i class="fas fa-phone text-success me-2"></i>
+                                        <a href="tel:108">108 (Emergency)</a>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card mb-2">
+                                <div class="card-body py-2">
+                                    <h6 class="card-title mb-1">Police Control Room</h6>
+                                    <p class="card-text mb-0">
+                                        <i class="fas fa-phone text-success me-2"></i>
+                                        <a href="tel:100">100 (Emergency)</a>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Emergency Request Form -->
+                <form id="medicalEmergencyForm" action="{{ url_for('medical_emergency') }}" method="POST">
+                    <h6 class="text-danger"><i class="fas fa-info-circle me-2"></i>Emergency Details</h6>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="emergencyType" class="form-label">Emergency Type *</label>
+                            <select class="form-select" id="emergencyType" name="emergency_type" required>
+                                <option value="">Select emergency type</option>
+                                <option value="heart">Heart Attack/Stroke</option>
+                                <option value="injury">Injury/Accident</option>
+                                <option value="fainting">Fainting/Unconsciousness</option>
+                                <option value="breathing">Breathing Difficulty</option>
+                                <option value="allergy">Severe Allergic Reaction</option>
+                                <option value="other">Other Medical Emergency</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="emergencyLocation" class="form-label">Your Current Location in Temple *</label>
+                            <input type="text" class="form-control" id="emergencyLocation" name="location" 
+                                   placeholder="e.g., Main Hall, Near North Gate, Parking Area" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="emergencyDetails" class="form-label">Emergency Details *</label>
+                        <textarea class="form-control" id="emergencyDetails" name="details" rows="3" 
+                                  placeholder="Please describe the emergency situation, number of people affected, and any other important details" required></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="emergencyContact" class="form-label">Your Contact Number *</label>
+                            <input type="tel" class="form-control" id="emergencyContact" name="contact" 
+                                   value="{{ session.get('phone', '') }}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="affectedPersons" class="form-label">Number of People Affected *</label>
+                            <input type="number" class="form-control" id="affectedPersons" name="affected_persons" 
+                                   min="1" max="10" value="1" required>
+                        </div>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="urgentHelp" name="urgent_help" required>
+                        <label class="form-check-label text-danger" for="urgentHelp">
+                            <strong>This is a genuine emergency requiring immediate medical assistance</strong>
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="medicalEmergencyForm" class="btn btn-danger">
+                    <i class="fas fa-bell me-1"></i> Send Emergency Alert
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Emergency Alert Script -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const emergencyForm = document.getElementById('medicalEmergencyForm');
+    
+    emergencyForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Show confirmation dialog
+        const confirmed = confirm('🚨 ARE YOU SURE?\n\nThis will alert temple administration and emergency services immediately. Only use for genuine medical emergencies.');
+        
+        if (confirmed) {
+            // Show loading state
+            const submitBtn = document.querySelector('[form="medicalEmergencyForm"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Sending Alert...';
+            submitBtn.disabled = true;
+            
+            // Submit the form
+            this.submit();
+        }
+    });
+
+    // Auto-detect location if possible
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            // This would typically be used to send coordinates to the server
+            console.log('Location detected:', position.coords);
+        }, function(error) {
+            console.log('Location access denied or unavailable');
+        });
+    }
+});
+</script>
+
+<style>
+.medical-emergency-card {
+    border-left: 4px solid #dc3545;
+    transition: all 0.3s ease;
+}
+
+.medical-emergency-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.2);
+}
+
+.emergency-contact a {
+    text-decoration: none;
+    color: #198754;
+    font-weight: 500;
+}
+
+.emergency-contact a:hover {
+    color: #0f6848;
+    text-decoration: underline;
+}
+</style>
+{% endblock %}

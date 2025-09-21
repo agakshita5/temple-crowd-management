@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Volunteer Dashboard</h2>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5>Assigned Incidents</h5>
+                </div>
+                <div class="card-body">
+                    {% if assigned_incidents %}
+                    <div class="list-group">
+                        {% for incident in assigned_incidents %}
+                        <a href="{{ url_for('view_incident', incident_id=incident[0]) }}" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">#{{ incident[0] }} - {{ incident[1] }}</h6>
+                                <span class="badge bg-{% if incident[4] == 'resolved' %}success{% elif incident[4] == 'in_progress' %}warning{% else %}danger{% endif %}">
+                                    {{ incident[4] }}
+                                </span>
+                            </div>
+                            <p class="mb-1">{{ incident[2][:50] }}{% if incident[2]|length > 50 %}...{% endif %}</p>
+                            <small>Priority: 
+                                <span class="badge bg-{% if incident[5] == 'critical' %}danger{% elif incident[5] == 'high' %}warning{% elif incident[5] == 'medium' %}info{% else %}secondary{% endif %}">
+                                    {{ incident[5] }}
+                                </span>
+                            </small>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-center">No incidents assigned to you.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5>Available Incidents</h5>
+                </div>
+                <div class="card-body">
+                    {% if available_incidents %}
+                    <div class="list-group">
+                        {% for incident in available_incidents %}
+                        <a href="{{ url_for('view_incident', incident_id=incident[0]) }}" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">#{{ incident[0] }} - {{ incident[1] }}</h6>
+                                <span class="badge bg-danger">{{ incident[4] }}</span>
+                            </div>
+                            <p class="mb-1">{{ incident[2][:50] }}{% if incident[2]|length > 50 %}...{% endif %}</p>
+                            <small>Priority: 
+                                <span class="badge bg-{% if incident[5] == 'critical' %}danger{% elif incident[5] == 'high' %}warning{% elif incident[5] == 'medium' %}info{% else %}secondary{% endif %}">
+                                    {{ incident[5] }}
+                                </span>
+                                • Location: {{ incident[3] or 'N/A' }}
+                            </small>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-center">No available incidents at the moment.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

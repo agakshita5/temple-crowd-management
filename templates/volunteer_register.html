@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Register as Volunteer</h2>
+    <form method="POST">
+        <div class="mb-3">
+            <label for="skills" class="form-label">Skills</label>
+            <select class="form-select" id="skills" name="skills" required>
+                <option value="">Select your skills</option>
+                <option value="medical">Medical Assistance</option>
+                <option value="security">Security/Crowd Management</option>
+                <option value="guidance">Guidance/Information</option>
+                <option value="technical">Technical Support</option>
+                <option value="general">General Assistance</option>
+            </select>
+        </div>
+        
+        <div class="mb-3">
+            <label for="location" class="form-label">Preferred Location</label>
+            <input type="text" class="form-control" id="location" name="location" placeholder="Where would you prefer to volunteer?">
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Register as Volunteer</button>
+    </form>
+</div>
+{% endblock %}

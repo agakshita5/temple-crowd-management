@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <h2>Incident #{{ incident[0] }}</h2>
+        <span class="badge bg-{% if incident[4] == 'resolved' %}success{% elif incident[4] == 'in_progress' %}warning{% else %}danger{% endif %}">
+            {{ incident[4]|upper }}
+        </span>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Type:</strong> {{ incident[1] }}</p>
+                    <p><strong>Priority:</strong> 
+                        <span class="badge bg-{% if incident[5] == 'critical' %}danger{% elif incident[5] == 'high' %}warning{% elif incident[5] == 'medium' %}info{% else %}secondary{% endif %}">
+                            {{ incident[5]|upper }}
+                        </span>
+                    </p>
+                    <p><strong>Location:</strong> {{ incident[3] or 'Not specified' }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Reported by:</strong> {{ incident[10] }}</p>
+                    <p><strong>Reported at:</strong> {{ incident[6] }}</p>
+                    {% if incident[8] %}
+                    <p><strong>Assigned to:</strong> {{ incident[11] or 'Unassigned' }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="mt-3">
+                <h5>Description</h5>
+                <p>{{ incident[2] }}</p>
+            </div>
+            
+            {% if incident[9] %}
+            <div class="mt-3">
+                <h5>Attached Image</h5>
+                <img src="{{ url_for('static', filename='uploads/' + incident[9]) }}" class="img-fluid" style="max-height: 300px;">
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    {% if session.get('admin_id') or session.get('user_id') == incident[7] %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Update Incident</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('update_incident') }}">
+                <input type="hidden" name="incident_id" value="{{ incident[0] }}">
+                
+                <div class="mb-3">
+                    <label for="status" class="form-label">Status</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="reported" {% if incident[4] == 'reported' %}selected{% endif %}>Reported</option>
+                        <option value="in_progress" {% if incident[4] == 'in_progress' %}selected{% endif %}>In Progress</option>
+                        <option value="resolved" {% if incident[4] == 'resolved' %}selected{% endif %}>Resolved</option>
+                    </select>
+                </div>
+                
+                {% if session.get('admin_id') %}
+                <div class="mb-3">
+                    <label for="assigned_to" class="form-label">Assign to Volunteer</label>
+                    <select class="form-select" id="assigned_to" name="assigned_to">
+                        <option value="0">Unassign</option>
+                        {% for volunteer in volunteers %}
+                        <option value="{{ volunteer[0] }}" {% if incident[8] == volunteer[0] %}selected{% endif %}>
+                            {{ volunteer[1] }} - {{ volunteer[2] }} ({{ volunteer[3] }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                
+                <div class="mb-3">
+                    <label for="notes" class="form-label">Update Notes</label>
+                    <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Update Incident</button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="card">
+        <div class="card-header">
+            <h5>Incident Updates</h5>
+        </div>
+        <div class="card-body">
+            {% if updates %}
+            <div class="timeline">
+                {% for update in updates %}
+                <div class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <h6 class="mb-1">{{ update[5] }} <small class="text-muted">{{ update[6] }}</small></h6>
+                        <p class="mb-1">Status changed to: <span class="badge bg-secondary">{{ update[2] }}</span></p>
+                        {% if update[3] %}
+                        <p class="mb-0">{{ update[3] }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p>No updates yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+.timeline-marker {
+    position: absolute;
+    left: -30px;
+    top: 5px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #007bff;
+}
+.timeline-content {
+    padding-bottom: 10px;
+    border-left: 2px solid #dee2e6;
+    padding-left: 15px;
+}
+</style>
+{% endblock %}

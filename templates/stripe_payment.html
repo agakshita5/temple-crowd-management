@@ -1,0 +1,30 @@
+<h2>Complete Your Donation</h2>
+<p>Amount: ₹{{ amount }}</p>
+<script src="https://js.stripe.com/v3/"></script>
+<form id="payment-form">
+  <div id="card-element"></div>
+  <button id="submit">Pay</button>
+  <div id="error-message"></div>
+</form>
+
+<script>
+  const stripe = Stripe("{{ stripe_key }}");
+  const elements = stripe.elements();
+  const card = elements.create("card");
+  card.mount("#card-element");
+
+  const form = document.getElementById("payment-form");
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const { paymentIntent, error } = await stripe.confirmCardPayment(
+      "{{ client_secret }}",
+      { payment_method: { card: card } }
+    );
+    if (error) {
+      document.getElementById("error-message").textContent = error.message;
+    } else {
+      alert("✅ Payment successful!");
+      window.location.href = "/user/dashboard"; // redirect after success
+    }
+  });
+</script>

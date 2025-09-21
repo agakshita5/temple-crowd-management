@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="success-container">
+    <div class="success-icon">✅</div>
+    <h2>Donation Successful!</h2>
+    
+    <div class="success-info">
+        <p><strong>Thank you for your generous donation!</strong></p>
+        <p>Your contribution helps support temple activities and community services.</p>
+        
+        {% if donation_id %}
+        <p><strong>Reference ID:</strong> {{ donation_id }}</p>
+        {% endif %}
+    </div>
+    
+    <div class="success-actions">
+        <a href="{{ url_for('user_dashboard') }}" class="btn btn-primary">
+            ← Back to Dashboard
+        </a>
+        
+        <a href="{{ url_for('applications') }}" class="btn btn-secondary">
+            View My Donations
+        </a>
+    </div>
+</div>
+
+<style>
+.success-container {
+    text-align: center;
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 30px;
+}
+
+.success-icon {
+    font-size: 60px;
+    margin-bottom: 20px;
+}
+
+.success-info {
+    background-color: #d4edda;
+    color: #155724;
+    padding: 20px;
+    border-radius: 8px;
+    margin: 20px 0;
+    border: 1px solid #c3e6cb;
+}
+
+.success-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.btn {
+    padding: 10px 20px;
+    text-decoration: none;
+    border-radius: 5px;
+    display: inline-block;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    color: white;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>My Reported Incidents</h2>
+    
+    {% if incidents %}
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Status</th>
+                    <th>Priority</th>
+                    <th>Reported</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for incident in incidents %}
+                <tr>
+                    <td>{{ incident[0] }}</td>
+                    <td>{{ incident[1] }}</td>
+                    <td>{{ incident[2][:50] }}{% if incident[2]|length > 50 %}...{% endif %}</td>
+                    <td>
+                        <span class="badge bg-{% if incident[4] == 'resolved' %}success{% elif incident[4] == 'in_progress' %}warning{% else %}danger{% endif %}">
+                            {{ incident[4] }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge bg-{% if incident[5] == 'critical' %}danger{% elif incident[5] == 'high' %}warning{% elif incident[5] == 'medium' %}info{% else %}secondary{% endif %}">
+                            {{ incident[5] }}
+                        </span>
+                    </td>
+                    <td>{{ incident[6] }}</td>
+                    <td>
+                        <a href="{{ url_for('view_incident', incident_id=incident[0]) }}" class="btn btn-sm btn-primary">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        You haven't reported any incidents yet.
+    </div>
+    {% endif %}
+    
+    <a href="{{ url_for('report_incident') }}" class="btn btn-success">Report New Incident</a>
+</div>
+{% endblock %}

@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Incident Management</h2>
+    
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Total Incidents</h5>
+                    <p class="card-text display-6">{{ incidents|length }}</p>
+                </div>
+            </div>
+        </div>
+        {% for stat in stats %}
+        <div class="col-md-3">
+            <div class="card text-white bg-{% if stat[0] == 'resolved' %}success{% elif stat[0] == 'in_progress' %}warning{% else %}danger{% endif %} mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">{{ stat[0]|upper }}</h5>
+                    <p class="card-text display-6">{{ stat[1] }}</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div class="mb-3">
+        <form class="row g-3">
+            <div class="col-auto">
+                <label for="status" class="visually-hidden">Filter by Status</label>
+                <select class="form-select" id="status" name="status" onchange="this.form.submit()">
+                    <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Statuses</option>
+                    <option value="reported" {% if status_filter == 'reported' %}selected{% endif %}>Reported</option>
+                    <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>In Progress</option>
+                    <option value="resolved" {% if status_filter == 'resolved' %}selected{% endif %}>Resolved</option>
+                </select>
+            </div>
+        </form>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Location</th>
+                    <th>Status</th>
+                    <th>Priority</th>
+                    <th>Reporter</th>
+                    <th>Assigned To</th>
+                    <th>Reported</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for incident in incidents %}
+                <tr>
+                    <td>{{ incident[0] }}</td>
+                    <td>{{ incident[1] }}</td>
+                    <td>{{ incident[2][:50] }}{% if incident[2]|length > 50 %}...{% endif %}</td>
+                    <td>{{ incident[3] or 'N/A' }}</td>
+                    <td>
+                        <span class="badge bg-{% if incident[4] == 'resolved' %}success{% elif incident[4] == 'in_progress' %}warning{% else %}danger{% endif %}">
+                            {{ incident[4] }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge bg-{% if incident[5] == 'critical' %}danger{% elif incident[5] == 'high' %}warning{% elif incident[5] == 'medium' %}info{% else %}secondary{% endif %}">
+                            {{ incident[5] }}
+                        </span>
+                    </td>
+                    <td>{{ incident[10] }}</td>
+                    <td>{{ incident[11] or 'Unassigned' }}</td>
+                    <td>{{ incident[6] }}</td>
+                    <td>
+                        <a href="{{ url_for('view_incident', incident_id=incident[0]) }}" class="btn btn-sm btn-primary">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
