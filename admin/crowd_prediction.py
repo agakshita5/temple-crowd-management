@@ -41,3 +41,30 @@ joblib.dump(model, 'admin/crowd_prediction_model.pkl')
 joblib.dump(le_day, 'admin/day_encoder.pkl')
 joblib.dump(le_slot, 'admin/slot_encoder.pkl')
 print("Model and encoders saved successfully!")
+
+# predictions
+def predict_crowd(day_of_week, month, festival_flag, darshan_slot, holiday_flag, season, special_event_flag):
+
+    model = joblib.load('admin/crowd_prediction_model.pkl')
+    le_day = joblib.load('admin/day_encoder.pkl')
+    le_slot = joblib.load('admin/slot_encoder.pkl')
+    
+    try:
+        encoded_day = le_day.transform([day_of_week])[0]
+    except:
+        encoded_day = le_day.transform(['Monday'])[0]  
+    
+    try:
+        encoded_slot = le_slot.transform([darshan_slot])[0]
+    except:
+        encoded_slot = le_slot.transform(['6-7'])[0]  
+    
+    features = np.array([[encoded_day, month, festival_flag, encoded_slot, holiday_flag, season, special_event_flag]])
+    
+    prediction = model.predict(features)[0]
+    
+    crowd_levels = {0: 'Low', 1: 'Medium', 2: 'High'}
+    return crowd_levels[prediction]
+
+test_prediction = predict_crowd('Sunday', 10, 1, '6-7', 1, 4, 0)
+print(f"\nTest prediction : {test_prediction}")
