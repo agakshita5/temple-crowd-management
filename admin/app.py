@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import json
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key_here'
+app.secret_key = 'pilgrim_secret_key'
 
 # Database initialization
 def init_db():
