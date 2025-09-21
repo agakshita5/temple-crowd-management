@@ -8,7 +8,7 @@ from database import init_db
 import crowd_prediction
 import json
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user, UserMixin
-
+from crowd_prediction_utils import predict_crowd_slot_level, predict_crowd_temple_level, is_festival_date
 from flask_mail import Mail, Message
 from apscheduler.schedulers.background import BackgroundScheduler
 from functools import wraps
@@ -18,7 +18,6 @@ from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 from werkzeug.utils import secure_filename
 import stripe
-                
 
 app = Flask(__name__)
 app.secret_key = 'pilgrim_secret_key'
@@ -130,38 +129,8 @@ def user_register():
     return render_template('register.html')
 
 @app.route('/login')
-def login_page():
+def login():
     return render_template('login.html')  # Create this template if it doesn't exist
-
-# # Keep your existing POST route but update the endpoint
-# @app.route('/login', methods=['POST'])
-# def user_login():
-    identifier = request.form.get('username')  # could be username or email
-    password = request.form.get('password')
-
-    conn = sqlite3.connect('pilgrim.db')
-    cursor = conn.cursor()
-    
-    # Query either by username or email
-    cursor.execute('''
-        SELECT id, username, password_hash, email 
-        FROM users 
-        WHERE username = ? OR email = ?
-    ''', (identifier, identifier))
-    
-    user = cursor.fetchone()
-    conn.close()
-
-    if user and check_password_hash(user[2], password):
-        # Login successful
-        session['user_id'] = user[0]
-        session['username'] = user[1]
-        session['email'] = user[3]
-        flash("✅ Logged in successfully!", "success")
-        return redirect(url_for('welcome'))
-    else:
-        flash("❌ Invalid username/email or password!", "error")
-        return redirect(url_for('index'))  # Redirect back to login page
 
 @app.route('/user/login', methods=['POST'])
 def user_login():
@@ -218,28 +187,41 @@ def user_dashboard():
     today = datetime.now()
     temple_name = "Somnath"
     
-    prediction = crowd_prediction.predict_crowd(today, temple_name)
+    today_str = today.strftime('%Y-%m-%d')
+    prediction = predict_crowd_temple_level(today_str, temple_name)
     
     conn = sqlite3.connect('pilgrim.db')
     cursor = conn.cursor()
 
     # 🔹 get available slots
     cursor.execute('''
-        SELECT id, slot_time, available_slots FROM time_slots 
-        WHERE slot_date = ? AND temple_name = ? AND available_slots > 0
-        ORDER BY slot_time
+        SELECT id, start_time, end_time, available_slots 
+        FROM time_slots 
+        WHERE slot_date = ? AND temple_name = ? AND available_slots > 0 AND is_active = 1
+        ORDER BY start_time
     ''', (today.date(), temple_name))
+
     slots = cursor.fetchall()
+
+    formatted_slots = []
+    for slot in slots:
+        slot_id, start_time, end_time, available_slots = slot
+        formatted_slots.append({
+            'id': slot_id,
+            'time_slot': f"{start_time}-{end_time}",
+            'available_slots': available_slots
+        })
 
     # 🔹 get latest booking for current user (joining time_slots for details)
     cursor.execute('''
-        SELECT b.id, t.temple_name, t.slot_time, t.slot_date
+        SELECT b.id, t.temple_name, t.start_time, t.end_time, t.slot_date, b.booking_id
         FROM bookings b
         JOIN time_slots t ON b.slot_id = t.id
         WHERE b.user_id = ?
-        ORDER BY t.slot_date DESC, t.slot_time DESC
+        ORDER BY t.slot_date DESC, t.start_time DESC
         LIMIT 1
     ''', (session['user_id'],))
+    
     booking_data = cursor.fetchone()
     
     conn.close()
@@ -256,6 +238,7 @@ def user_dashboard():
         booking_data=booking_data,
         date_today=date_today  # Add the formatted date
     )
+
 @app.route('/my-account')
 @login_required
 def my_account():
@@ -812,15 +795,19 @@ def init_time_slots_from_image():
 
 @app.route('/admin/visitors')
 @admin_required
-def view_visitors():
+def admin_visitors():
     conn = sqlite3.connect('pilgrim.db')
     cursor = conn.cursor()
     
     cursor.execute('''
-        SELECT v.*, u.username, b.booking_id 
-        FROM visitors v 
-        JOIN users u ON v.user_id = u.id 
-        JOIN bookings b ON v.booking_id = b.id 
+        SELECT v.id, v.full_name, v.age, v.phone_number, v.email, v.address,
+               u.username, b.booking_id, t.temple_name, t.slot_date, 
+               t.start_time || '-' || t.end_time as time_slot,
+               v.created_at
+        FROM visitors v
+        JOIN users u ON v.user_id = u.id
+        JOIN bookings b ON v.booking_id = b.id
+        JOIN time_slots t ON b.slot_id = t.id
         ORDER BY v.created_at DESC
     ''')
     visitors = cursor.fetchall()
@@ -828,7 +815,6 @@ def view_visitors():
     conn.close()
     
     return render_template('admin_visitors.html', visitors=visitors)
-
 
 @app.route('/admin/add_test_visitors')
 @admin_required
@@ -1196,28 +1182,6 @@ def api_incidents():
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)})
 
-# ---------- New route: store visitor info linked to user ----------
-# @app.route("/submit", methods=["POST"])
-# @login_required
-# def submit():
-#     full_name = request.form["full_name"]
-#     age = request.form["age"]
-#     phone_number = request.form["phone_number"]
-#     email = request.form["email"]
-#     address = request.form["address"]
-
-#     conn = sqlite3.connect("pilgrim.db")  # use main database
-#     cursor = conn.cursor()
-#     cursor.execute("""
-#         INSERT INTO visitors (full_name, age, phone_number, email, address)
-#         VALUES (?, ?, ?, ?, ?)
-#     """, (full_name, age, phone_number, email, address))
-#     conn.commit()
-#     conn.close()
-
-#     flash("✅ Visitor information submitted successfully!", "success")
-#     return redirect(url_for("user_dashboard"))
-
 @app.route('/download/qr/<int:booking_id>')
 @login_required
 def download_qr_ticket(booking_id):
@@ -1284,6 +1248,7 @@ def download_qr_ticket(booking_id):
     img_byte_arr.seek(0)
 
     return send_file(img_byte_arr, as_attachment=True, download_name=f'Pilgrim_Ticket_{booking_id_str}.png', mimetype='image/png')
+
 @app.route('/payment/verify', methods=['POST'])
 def verify_payment():
     data = request.json
@@ -1291,9 +1256,6 @@ def verify_payment():
     order_id = data.get('order_id')
     signature = data.get('signature')
     booking_id = data.get('booking_id')
-    
-    # In a real implementation, you would verify the payment signature with Razorpay
-    # For demo purposes, we'll assume payment is successful
     
     conn = sqlite3.connect('pilgrim.db')
     cursor = conn.cursor()
@@ -1349,29 +1311,43 @@ def admin_dashboard():
     temple_name = "Somnath"
     for i in range(7):
         date = datetime.now() + timedelta(days=i)
-        prediction = crowd_prediction.predict_crowd(date, temple_name)
-        predictions.append({'date': date.date(), 'prediction': prediction})
+        date_str = date.strftime('%Y-%m-%d')
+        prediction = predict_crowd_temple_level(date_str, temple_name)
+        predictions.append({'date': date,'prediction': prediction})
 
-    # Get recent bookings
+    # Get visitor and booking statistics
     conn = sqlite3.connect('pilgrim.db')
     cursor = conn.cursor()
+    
+    # Total visitors
+    cursor.execute('SELECT COUNT(*) FROM visitors')
+    total_visitors = cursor.fetchone()[0]
+    
+    # Total bookings
+    cursor.execute('SELECT COUNT(*) FROM bookings')
+    total_bookings = cursor.fetchone()[0]
+    
+    # Recent bookings with visitor info
     cursor.execute('''
-        SELECT b.booking_id, b.booking_time, t.slot_date, t.slot_time, t.temple_name 
+        SELECT b.booking_id, b.booking_time, t.slot_date, 
+               t.start_time || '-' || t.end_time as time_slot, 
+               t.temple_name, v.full_name, v.phone_number, v.email
         FROM bookings b
         JOIN time_slots t ON b.slot_id = t.id
+        LEFT JOIN visitors v ON v.booking_id = b.id
         ORDER BY b.booking_time DESC
         LIMIT 10
     ''')
     recent_bookings = cursor.fetchall()
+    
     conn.close()
 
     return render_template('admin.html',
                            predictions=predictions,
                            recent_bookings=recent_bookings,
-                           temple_name=temple_name)
-
-
-
+                           temple_name=temple_name,
+                           total_visitors=total_visitors,
+                           total_bookings=total_bookings)
 
 @app.route("/admin/notifications")
 def view_notifications():
@@ -1395,8 +1371,89 @@ def visualization():
 @app.route('/logout')
 def logout():
     session.clear()
-    return redirect(url_for('index'))
+    return redirect(url_for('home'))
 
+# ----------------- CROWD PREDICTION ROUTES -----------------
+@app.route('/predict_crowd')
+@login_required
+def predict_crowd():
+    """Page for crowd prediction"""
+    # Generate default values for the form
+    default_date = datetime.now().strftime('%Y-%m-%d')
+    
+    # Time slots for the dropdown
+    time_slots = [
+        '6-7', '7-8', '8-9', '9-10', '10-11', '11-12',
+        '12-1', '1-2', '2-3', '3-4', '4-5', '5-6'
+    ]
+    
+    return render_template('predict_crowd.html', 
+                         default_date=default_date,
+                         time_slots=time_slots)
+
+FESTIVAL_DATES = {
+    '2024-01-14': 'Makar Sankranti',
+    '2024-01-26': 'Republic Day',
+    '2024-03-08': 'Maha Shivaratri',
+    '2024-03-25': 'Holi',
+    '2024-04-09': 'Ugadi',
+    '2024-04-17': 'Ram Navami',
+    '2024-05-23': 'Buddha Purnima',
+    '2024-08-26': 'Janmashtami',
+    '2024-09-07': 'Ganesh Chaturthi',
+    '2024-10-02': 'Gandhi Jayanti',
+    '2024-10-12': 'Dussehra',
+    '2024-11-01': 'Diwali',
+    '2024-12-25': 'Christmas',
+    '2025-01-14': 'Makar Sankranti',
+    '2025-01-26': 'Republic Day',
+    '2025-02-26': 'Maha Shivaratri',
+    '2025-03-25': 'Holi',
+    '2025-04-09': 'Ugadi',
+    '2025-04-17': 'Ram Navami',
+    '2025-05-23': 'Buddha Purnima',
+    '2025-08-16': 'Janmashtami',
+    '2025-09-27': 'Ganesh Chaturthi',
+    '2025-10-02': 'Gandhi Jayanti',
+    '2025-09-22': 'Navratri',
+    '2025-09-30': 'Asthmi',
+    '2025-10-01': 'Mahanavami',
+    '2025-10-02': 'Dussehra',
+    '2025-10-20': 'Diwali',
+    '2025-12-25': 'Christmas',
+}
+
+@app.route('/api/predict_crowd', methods=['POST'])
+@login_required
+def api_predict_crowd():
+    """API endpoint for crowd prediction"""
+    try:
+        data = request.json
+        date_str = data.get('date')
+        darshan_slot = data.get('slot')
+        
+        if not date_str or not darshan_slot:
+            return jsonify({'success': False, 'error': 'Date and slot are required'})
+        
+        # Predict crowd level
+        crowd_level = predict_crowd_slot_level(date_str, darshan_slot)
+        
+        # Check if it's a festival date
+        festival_info = None
+        if is_festival_date(date_str):
+            festival_info = FESTIVAL_DATES[date_str]
+        
+        return jsonify({
+            'success': True,
+            'prediction': crowd_level,
+            'date': date_str,
+            'slot': darshan_slot,
+            'is_festival': festival_info is not None,
+            'festival_name': festival_info
+        })
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 if __name__ == '__main__':
     app.run(debug=True)

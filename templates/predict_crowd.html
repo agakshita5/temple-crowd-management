@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .prediction-card {
+        background: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow);
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    .prediction-result {
+        padding: 1.5rem;
+        border-radius: var(--border-radius);
+        margin-top: 1.5rem;
+        display: none;
+    }
+    .prediction-low {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    .prediction-medium {
+        background-color: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeeba;
+    }
+    .prediction-high {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+    .loading {
+        display: none;
+        text-align: center;
+        margin: 1rem 0;
+    }
+    .festival-badge {
+        background-color: #ffc107;
+        color: #856404;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.875rem;
+        margin-left: 0.5rem;
+    }
+</style>
+
+<div class="container animate-fadeIn">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="prediction-card">
+                <h2 class="text-center spiritual-text mb-4">Predict Crowd Level</h2>
+                <p class="text-center text-muted mb-4">
+                    Select a date and time slot to predict the crowd level at the temple
+                </p>
+                
+                <form id="predictionForm">
+                    <div class="mb-3">
+                        <label for="predictionDate" class="form-label">Select Date</label>
+                        <input type="date" class="form-control" id="predictionDate" 
+                               value="{{ default_date }}" required>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="timeSlot" class="form-label">Select Time Slot</label>
+                        <select class="form-select" id="timeSlot" required>
+                            <option value="">Choose a time slot...</option>
+                            {% for slot in time_slots %}
+                            <option value="{{ slot }}">{{ slot }}:00</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-chart-line me-2"></i>Predict Crowd Level
+                        </button>
+                    </div>
+                </form>
+                
+                <div class="loading" id="loadingIndicator">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Analyzing patterns...</p>
+                </div>
+                
+                <div class="prediction-result" id="predictionResult">
+                    <h4 class="mb-3">Prediction Result</h4>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span><strong>Date:</strong> <span id="resultDate"></span></span>
+                        <span><strong>Time Slot:</strong> <span id="resultSlot"></span></span>
+                    </div>
+                    <div id="festivalInfo" class="mb-3" style="display: none;">
+                        <span class="festival-badge" id="festivalBadge"></span>
+                    </div>
+                    <div class="text-center">
+                        <h3 id="crowdLevel" class="mb-0"></h3>
+                        <p class="text-muted mt-1" id="crowdDescription"></p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">How it works</h5>
+                    <p class="card-text">
+                        Our prediction model analyzes historical data, day of the week, festival dates,
+                        seasonality, and other factors to estimate crowd levels at the temple.
+                    </p>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item">
+                            <i class="fas fa-users text-success me-2"></i>
+                            <strong>Low Crowd:</strong> Minimal waiting time, peaceful darshan
+                        </li>
+                        <li class="list-group-item">
+                            <i class="fas fa-users text-warning me-2"></i>
+                            <strong>Medium Crowd:</strong> Moderate waiting time, manageable crowd
+                        </li>
+                        <li class="list-group-item">
+                            <i class="fas fa-users text-danger me-2"></i>
+                            <strong>High Crowd:</strong> Long waiting times, very crowded conditions
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('predictionForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const date = document.getElementById('predictionDate').value;
+    const slot = document.getElementById('timeSlot').value;
+    
+    if (!date || !slot) {
+        alert('Please select both date and time slot');
+        return;
+    }
+    
+    // Show loading indicator
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('predictionResult').style.display = 'none';
+    
+    try {
+        const response = await fetch('/api/predict_crowd', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                date: date,
+                slot: slot
+            })
+        });
+        
+        const data = await response.json();
+        
+        // Hide loading indicator
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
+        if (data.success) {
+            // Update result display
+            document.getElementById('resultDate').textContent = data.date;
+            document.getElementById('resultSlot').textContent = data.slot + ':00';
+            document.getElementById('crowdLevel').textContent = data.prediction + ' Crowd';
+            
+            // Set appropriate styling based on prediction
+            const resultDiv = document.getElementById('predictionResult');
+            resultDiv.className = 'prediction-result';
+            
+            if (data.prediction === 'Low') {
+                resultDiv.classList.add('prediction-low');
+                document.getElementById('crowdDescription').textContent = 
+                    'Ideal time for a peaceful visit with minimal waiting';
+            } else if (data.prediction === 'Medium') {
+                resultDiv.classList.add('prediction-medium');
+                document.getElementById('crowdDescription').textContent = 
+                    'Moderate crowd expected, plan for some waiting time';
+            } else {
+                resultDiv.classList.add('prediction-high');
+                document.getElementById('crowdDescription').textContent = 
+                    'Heavy crowd expected, consider alternative time slots';
+            }
+            
+            // Show festival info if applicable
+            const festivalInfo = document.getElementById('festivalInfo');
+            const festivalBadge = document.getElementById('festivalBadge');
+            
+            if (data.is_festival) {
+                festivalInfo.style.display = 'block';
+                festivalBadge.textContent = 'Festival: ' + data.festival_name;
+            } else {
+                festivalInfo.style.display = 'none';
+            }
+            
+            // Show result
+            resultDiv.style.display = 'block';
+            
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        document.getElementById('loadingIndicator').style.display = 'none';
+        alert('Error making prediction: ' + error.message);
+    }
+});
+</script>
+{% endblock %}
