@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    /* New button styles */
+    .btn-spiritual {
+        background: var(--spiritual-gradient); /* Uses your existing gradient */
+        color: white;
+        border: none;
+        transition: all 0.3s ease;
+    }
+    .btn-spiritual:hover {
+        background: linear-gradient(135deg, #7C4A00 0%, #A0522D 100%); /* Slightly darker hover */
+        color: white;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Toggle buttons styles */
+    .btn-toggle-group .btn {
+        padding: 10px 25px;
+        font-weight: 600;
+        border-radius: var(--border-radius);
+        border: 1px solid transparent; /* default transparent border */
+        transition: all 0.3s ease;
+    }
+    .btn-toggle-group .btn.active.user-active {
+        background: var(--spiritual-gradient);
+        color: white;
+        border-color: #a0522d;
+    }
+    .btn-toggle-group .btn.active.admin-active {
+        background: linear-gradient(135deg, #DAA520 0%, #B8860B 100%); /* Gold/Darker Gold for admin active */
+        color: white;
+        border-color: #b8860b;
+    }
+    .btn-toggle-group .btn:not(.active) {
+        background-color: var(--light-bg); /* Use a light background for inactive */
+        color: var(--text-color); /* Inherit text color */
+        border-color: var(--border-color); /* Light border */
+    }
+    .btn-toggle-group .btn:not(.active):hover {
+        background-color: var(--background-color); /* Slightly darker on hover */
+        color: var(--spiritual);
+    }
+
+    /* Card header styles for user and admin login forms */
+    .card-header.user-header {
+        background: var(--spiritual-gradient); /* User card header */
+        color: white;
+    }
+    .card-header.admin-header {
+        background: linear-gradient(135deg, #DAA520 0%, #B8860B 100%); /* Admin card header */
+        color: white;
+    }
+
+</style>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10">
+            <div class="card animate-fadeIn" style="animation-delay: 0.2s;">
+                <div class="card-header text-center">
+                    <h3 class="mb-0 spiritual-text" style="font-weight: 600;"><i class="fas fa-temple me-2"></i>Welcome to Pilgrim</h3>
+                </div>
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} animate-fadeIn">{{ message }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+                    
+                    <div class="text-center mb-4 btn-toggle-group">
+                        <button type="button" id="user-login-btn-toggle" class="btn active user-active me-2">User Login</button>
+                        <button type="button" id="admin-login-btn-toggle" class="btn">Admin Login</button>
+                    </div>
+                    
+                    <div id="user-login-form" class="animate-fadeIn">
+                        <div class="card mb-4">
+                            <div class="card-header user-header text-center">
+                                <h5 class="mb-0"><i class="fas fa-user"></i> User Login</h5>
+                            </div>
+                            <div class="card-body">
+                                <form action="{{ url_for('user_login') }}" method="post">
+                                    <div class="mb-3">
+                                        <label for="username" class="form-label">Username or Email</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                            <input type="text" class="form-control" id="username" name="username" 
+                                                   placeholder="Enter your username or email" required>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="password" class="form-label">Password</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                            <input type="password" class="form-control" id="password" name="password" 
+                                                   placeholder="Enter your password" required>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-spiritual w-100 pulse">
+                                        <i class="fas fa-sign-in-alt"></i> User Login
+                                    </button>
+                                </form>
+                                <p class="text-center text-muted mt-3">
+                                    Don't have an account? <a href="{{ url_for('user_register') }}" class="spiritual-text">Register here</a>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="admin-login-form" class="d-none animate-fadeIn">
+                        <div class="card">
+                            <div class="card-header admin-header text-white text-center">
+                                <h5 class="mb-0"><i class="fas fa-shield-alt"></i> Admin Login</h5>
+                            </div>
+                            <div class="card-body">
+                                <form action="{{ url_for('admin_login') }}" method="post">
+                                    <div class="mb-3">
+                                        <label for="admin_username" class="form-label">Admin Username</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fas fa-user-shield"></i></span>
+                                            <input type="text" class="form-control" id="admin_username" name="username" 
+                                                   placeholder="admin" required>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="admin_password" class="form-label">Admin Password</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fas fa-key"></i></span>
+                                            <input type="password" class="form-control" id="admin_password" name="password" 
+                                                   placeholder="Enter admin password" required>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-spiritual w-100">
+                                        <i class="fas fa-lock"></i> Admin Login
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const userLoginBtn = document.getElementById('user-login-btn-toggle');
+    const adminLoginBtn = document.getElementById('admin-login-btn-toggle');
+    const userLoginForm = document.getElementById('user-login-form');
+    const adminLoginForm = document.getElementById('admin-login-form');
+
+    userLoginBtn.addEventListener('click', function() {
+        userLoginForm.classList.remove('d-none');
+        adminLoginForm.classList.add('d-none');
+        
+        userLoginBtn.classList.add('active', 'user-active');
+        userLoginBtn.classList.remove('admin-active'); // Ensure admin active removed if present
+        adminLoginBtn.classList.remove('active', 'admin-active');
+    });
+    
+    adminLoginBtn.addEventListener('click', function() {
+        adminLoginForm.classList.remove('d-none');
+        userLoginForm.classList.add('d-none');
+        
+        adminLoginBtn.classList.add('active', 'admin-active');
+        adminLoginBtn.classList.remove('user-active'); // Ensure user active removed if present
+        userLoginBtn.classList.remove('active', 'user-active');
+    });
+});
+</script>
+{% endblock %}

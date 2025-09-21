@@ -31,7 +31,7 @@ body {
 
 /* Navbar Styling */
 .navbar {
-    background: rgba(139, 69, 19, 0.95) !important;
+    /* REMOVED: The conflicting 'background' property was here */
     backdrop-filter: blur(10px);
     box-shadow: var(--shadow);
     padding: 1rem 0;
@@ -365,116 +365,4 @@ body {
 .spiritual-icon {
     color: var(--spiritual);
     margin-right: 8px;
-}
-/* Add basic styling for your application */
-body {
-    font-family: 'Poppins', sans-serif;
-    background: linear-gradient(135deg, #f5f5dc 0%, #faf0e6 100%);
-    min-height: 100vh;
-    color: #212529;
-    line-height: 1.6;
-}
-
-.navbar {
-    background: rgba(139, 69, 19, 0.95) !important;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    padding: 1rem 0;
-}
-
-.navbar-brand {
-    font-weight: 700;
-    font-size: 1.8rem;
-    color: white !important;
-}
-
-.card {
-    border: none;
-    border-radius: 15px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    overflow: hidden;
-}
-
-.card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-}
-
-.card-header {
-    background: linear-gradient(135deg, #8B4513 0%, #CD853F 100%);
-    color: white;
-    border: none;
-    padding: 1.5rem;
-    font-weight: 600;
-}
-
-.btn {
-    border-radius: 25px;
-    padding: 0.8rem 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    border: none;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, #8B4513 0%, #CD853F 100%);
-}
-
-.btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-}
-
-.alert {
-    border-radius: 15px;
-    border: none;
-}
-
-/* Medical emergency specific styles */
-.medical-emergency-card {
-    border-left: 4px solid #dc3545;
-    transition: all 0.3s ease;
-}
-
-.medical-emergency-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.2);
-}
-
-.emergency-contact a {
-    text-decoration: none;
-    color: #198754;
-    font-weight: 500;
-}
-
-.emergency-contact a:hover {
-    color: #0f6848;
-    text-decoration: underline;
-}
-
-/* Animation classes */
-.animate-fadeIn {
-    opacity: 0;
-    transform: translateY(20px);
-    transition: all 0.6s ease;
-}
-
-.animate-fadeIn.fadeIn {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-.pulse {
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
 }
