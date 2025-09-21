@@ -8,12 +8,22 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- QR Code Scanner -->
+    <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+    <style>
+        /* Ensures navbar text is white and has a shadow to stand out */
+        .navbar-dark .navbar-nav .nav-link,
+        .navbar-dark .navbar-brand {
+            color: #ffffff; /* White text */
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7); /* Dark shadow for contrast */
+        }
+    </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-light">
+    <nav class="navbar navbar-expand-lg navbar-dark" style="background-image: url('{{ url_for('static', filename='image/image_7df009.jpg') }}'); background-size: cover; background-position: center;">
         <div class="container">
-            <a class="navbar-brand" href="{{ url_for('index') }}">
-                <i class="fas fa-temple me-2"></i>Pilgrim
+            <a class="navbar-brand" href="{{ url_for('home') }}">
+                <i class="fas fa-temple me-2"></i>Pravah
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -27,25 +37,16 @@
                         </a>
                     </li>
                     
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('logout') }}">
-                            <i class="fas fa-sign-out-alt me-1"></i>Logout
-                        </a>
-                    </li>
                     {% else %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('index') }}">
+                        <a class="nav-link" href="{{ url_for('home') }}">
                             <i class="fas fa-home me-1"></i>Home
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('user_register') }}">
-                            <i class="fas fa-user-plus me-1"></i>Register
+                        <a class="nav-link" href="{{ url_for('logout') }}">
+                            <i class="fas fa-sign-out-alt me-1"></i>Logout
                         </a>
-                    </li>
-                    <!-- Add this to your navigation menu -->
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('select_slot') }}">Book Time Slot</a>
                     </li>
                     {% endif %}
                 </ul>

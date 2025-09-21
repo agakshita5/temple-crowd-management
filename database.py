@@ -176,7 +176,7 @@ def init_db():
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id)
     )
-''')
+    ''')
 
 
     # -------------------------
@@ -240,10 +240,6 @@ def init_db():
     conn.commit()
     conn.close()
     print("✅ Database initialized with tables and demo data")
-
-# -------------------------
-# Visitor functions
-# -------------------------
 
 def insert_visitor(full_name, age, phone_number, email, address, user_id, booking_id):
     """Insert a new visitor into the visitors table with proper foreign keys"""

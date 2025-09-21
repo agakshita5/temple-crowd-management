@@ -75,7 +75,6 @@ def login_required(f):
             return redirect(url_for('index'))
         return f(*args, **kwargs)
     return decorated_function
-
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -85,8 +84,7 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-
-# Routes
+# ----------------- HOME & LOGIN ROUTES -----------------
 @app.route('/')
 def home():
     return render_template('home.html')  # Changed from index.html to home.html
@@ -94,7 +92,6 @@ def home():
 @app.route('/index')
 def index():
     return render_template('index.html')
-
 
 @app.route('/user/register', methods=['GET', 'POST'])
 def user_register():
@@ -173,11 +170,7 @@ def live_crowd():
     # Your implementation here
     return render_template('live_crowd.html')
 
-@app.route('/emergency_contacts')
-def emergency_contacts():
-    # Add your emergency contacts logic here
-    return render_template('emergency_contacts.html')
-
+# ----------------- USER ROUTES -----------------
 @app.route('/user/dashboard')
 @login_required
 def user_dashboard():
@@ -264,7 +257,7 @@ def my_account():
                          booking_count=booking_count,
                          visitor_count=visitor_count)
 
-
+# ----------------- BOOKING ROUTES -----------------
 @app.route('/book/slot', methods=['POST'])
 @login_required
 def book_slot():
@@ -288,7 +281,7 @@ def book_slot():
         cursor = conn.cursor()
 
         # Check slot availability
-        cursor.execute('SELECT available_slots, slot_time, slot_date, temple_name FROM time_slots WHERE id = ?', (slot_id,))
+        cursor.execute('SELECT available_slots, start_time, end_time, slot_date, temple_name FROM time_slots WHERE id = ?', (slot_id,))
         slot_data = cursor.fetchone()
         
         if not slot_data:
@@ -296,7 +289,7 @@ def book_slot():
             flash('Slot not found', 'error')
             return redirect(url_for('user_dashboard'))
             
-        available_slots, slot_time, slot_date, temple_name = slot_data
+        available_slots, start_time, end_time, slot_date, temple_name = slot_data
         
         if available_slots < persons:
             conn.close()
@@ -304,23 +297,28 @@ def book_slot():
             return redirect(url_for('user_dashboard'))
 
         # Create booking with a unique booking ID
-        booking_id = random.randint(100000, 999999)
+        booking_id = f"BK{random.randint(100000, 999999)}"
         
+        # Insert booking
         cursor.execute('''
-            INSERT INTO bookings (user_id, slot_id, booking_id, qr_code, booking_time, status, persons)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (session['user_id'], slot_id, booking_id, f'QR_{booking_id}', datetime.now(), 'confirmed', persons))
+            INSERT INTO bookings (user_id, slot_id, persons, booking_id, booking_time, 
+                                status, temple_name, slot_time, name)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (session['user_id'], slot_id, persons, booking_id, datetime.now(),
+             'confirmed', temple_name, f"{start_time}-{end_time}", session['username']))
         
-        booking_db_id = cursor.lastrowid  # Get the actual database ID of the booking
+        booking_db_id = cursor.lastrowid
         print(f"DEBUG: Booking created with DB ID: {booking_db_id}, Booking ID: {booking_id}")
 
-        # Insert visitor info - use the database booking ID (booking_db_id), not the display booking ID
-        cursor.execute('''
-            INSERT INTO visitors (full_name, age, phone_number, email, address, user_id, booking_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (full_name, age, phone_number, email, address, session['user_id'], booking_db_id))
-        
-        print(f"DEBUG: Visitor info inserted for booking DB ID: {booking_db_id}")
+        # Insert visitor info - THIS IS THE CRITICAL PART
+        if full_name:  # Only insert if visitor info was provided
+            cursor.execute('''
+                INSERT INTO visitors (full_name, age, phone_number, email, address, user_id, booking_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (full_name, age, phone_number, email, address, session['user_id'], booking_db_id))
+            print(f"DEBUG: Visitor info inserted for booking DB ID: {booking_db_id}")
+        else:
+            print("DEBUG: No visitor info provided in form")
 
         # Update available slots
         cursor.execute('''
@@ -330,7 +328,7 @@ def book_slot():
         conn.commit()
         conn.close()
 
-        flash(f'Booking confirmed for {temple_name} on {slot_date} at {slot_time}! Booking ID: {booking_id}', 'success')
+        flash(f'Booking confirmed for {temple_name} on {slot_date} at {start_time}-{end_time}! Booking ID: {booking_id}', 'success')
         return redirect(url_for('user_dashboard'))
 
     except Exception as e:
@@ -538,6 +536,42 @@ def get_time_slots_api():
     
     return jsonify({'success': True, 'slots': slots})
 
+# Helper function to get available temples
+def get_available_temples():
+    conn = sqlite3.connect('pilgrim.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT DISTINCT temple_name FROM time_slots ORDER BY temple_name')
+    temples = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    return temples
+
+# Add this function to initialize time slots with the data from the image
+def init_time_slots_from_image():
+    """Initialize time slots with the data shown in the image"""
+    conn = sqlite3.connect('pilgrim.db')
+    cursor = conn.cursor()
+    
+    # Clear existing slots for the demo
+    cursor.execute('DELETE FROM time_slots WHERE slot_date = ?', (datetime.now().date().isoformat(),))
+    
+    # Add slots from the image
+    slots_data = [
+        ("06:00", "07:30", 100, 45),
+        ("09:00", "10:30", 150, 75),
+        ("07:30", "09:00", 200, 120),
+        ("10:30", "12:00", 100, 30)
+    ]
+    
+    for start_time, end_time, total_slots, available_slots in slots_data:
+        cursor.execute('''
+            INSERT INTO time_slots (temple_name, slot_date, start_time, end_time, total_slots, available_slots)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', ("Somnath", datetime.now().date().isoformat(), start_time, end_time, total_slots, available_slots))
+    
+    conn.commit()
+    conn.close()
+    print("✅ Time slots initialized with data from image")
+  
 # ----------------- DONATION ROUTES -----------------
 @app.route('/donate', methods=['GET', 'POST'])
 @login_required
@@ -756,106 +790,13 @@ def donation_cancel():
     flash("Payment cancelled", "info")
     return redirect(url_for('donate'))
 
-# Helper function to get available temples
-def get_available_temples():
-    conn = sqlite3.connect('pilgrim.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT DISTINCT temple_name FROM time_slots ORDER BY temple_name')
-    temples = [row[0] for row in cursor.fetchall()]
-    conn.close()
-    return temples
+# ----------------- EMERGENCY ROUTE -----------------
+@app.route('/emergency_contacts')
+def emergency_contacts():
+    # Add your emergency contacts logic here
+    return render_template('emergency_contacts.html')
 
-# Add this function to initialize time slots with the data from the image
-def init_time_slots_from_image():
-    """Initialize time slots with the data shown in the image"""
-    conn = sqlite3.connect('pilgrim.db')
-    cursor = conn.cursor()
-    
-    # Clear existing slots for the demo
-    cursor.execute('DELETE FROM time_slots WHERE slot_date = ?', (datetime.now().date().isoformat(),))
-    
-    # Add slots from the image
-    slots_data = [
-        ("06:00", "07:30", 100, 45),
-        ("09:00", "10:30", 150, 75),
-        ("07:30", "09:00", 200, 120),
-        ("10:30", "12:00", 100, 30)
-    ]
-    
-    for start_time, end_time, total_slots, available_slots in slots_data:
-        cursor.execute('''
-            INSERT INTO time_slots (temple_name, slot_date, start_time, end_time, total_slots, available_slots)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', ("Somnath", datetime.now().date().isoformat(), start_time, end_time, total_slots, available_slots))
-    
-    conn.commit()
-    conn.close()
-    print("✅ Time slots initialized with data from image")
-  
-
-@app.route('/admin/visitors')
-@admin_required
-def admin_visitors():
-    conn = sqlite3.connect('pilgrim.db')
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        SELECT v.id, v.full_name, v.age, v.phone_number, v.email, v.address,
-               u.username, b.booking_id, t.temple_name, t.slot_date, 
-               t.start_time || '-' || t.end_time as time_slot,
-               v.created_at
-        FROM visitors v
-        JOIN users u ON v.user_id = u.id
-        JOIN bookings b ON v.booking_id = b.id
-        JOIN time_slots t ON b.slot_id = t.id
-        ORDER BY v.created_at DESC
-    ''')
-    visitors = cursor.fetchall()
-    
-    conn.close()
-    
-    return render_template('admin_visitors.html', visitors=visitors)
-
-@app.route('/admin/add_test_visitors')
-@admin_required
-def add_test_visitors():
-    """Add test visitor data for demonstration"""
-    conn = sqlite3.connect('pilgrim.db')
-    cursor = conn.cursor()
-    
-    # Get a user and booking to associate with test data
-    cursor.execute('SELECT id FROM users LIMIT 1')
-    user = cursor.fetchone()
-    
-    cursor.execute('SELECT id FROM bookings LIMIT 1')
-    booking = cursor.fetchone()
-    
-    if user and booking:
-        user_id = user[0]
-        booking_id = booking[0]
-        
-        # Add some test visitors
-        test_visitors = [
-            ('Rajesh Kumar', 35, '9876543210', 'rajesh@example.com', 'Ahmedabad, Gujarat', user_id, booking_id),
-            ('Priya Shah', 28, '8765432109', 'priya@example.com', 'Vadodara, Gujarat', user_id, booking_id),
-            ('Amit Patel', 42, '7654321098', 'amit@example.com', 'Surat, Gujarat', user_id, booking_id),
-            ('Sneha Desai', 31, '6543210987', 'sneha@example.com', 'Rajkot, Gujarat', user_id, booking_id),
-        ]
-        
-        cursor.executemany('''
-            INSERT INTO visitors (full_name, age, phone_number, email, address, user_id, booking_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', test_visitors)
-        
-        conn.commit()
-        flash("Test visitors added successfully", "success")
-    else:
-        flash("No users or bookings found to associate with test visitors", "error")
-    
-    conn.close()
-    return redirect(url_for('admin_visitors'))
-
-# Incident Reporting Routes
+# ----------------- INCIDENT ROUTES -----------------
 @app.route('/report/incident', methods=['GET', 'POST'])
 @login_required
 def report_incident():
@@ -1043,76 +984,6 @@ def admin_incidents():
                          stats=stats, 
                          status_filter=status_filter)
 
-# Volunteer registration
-@app.route('/volunteer/register', methods=['GET', 'POST'])
-@login_required
-def volunteer_register():
-    if request.method == 'POST':
-        skills = request.form.get('skills')
-        location = request.form.get('location')
-        
-        conn = sqlite3.connect('pilgrim.db')
-        cursor = conn.cursor()
-        
-        try:
-            cursor.execute('''
-                INSERT INTO volunteers (user_id, skills, location)
-                VALUES (?, ?, ?)
-            ''', (session['user_id'], skills, location))
-            
-            conn.commit()
-            flash('Volunteer registration successful!', 'success')
-            return redirect(url_for('user_dashboard'))
-            
-        except sqlite3.IntegrityError:
-            flash('You are already registered as a volunteer', 'info')
-            return redirect(url_for('user_dashboard'))
-        finally:
-            conn.close()
-    
-    return render_template('volunteer_register.html')
-
-# Volunteer dashboard
-@app.route('/volunteer/dashboard')
-@login_required
-def volunteer_dashboard():
-    # Check if user is a volunteer
-    conn = sqlite3.connect('pilgrim.db')
-    cursor = conn.cursor()
-    
-    cursor.execute('SELECT * FROM volunteers WHERE user_id = ?', (session['user_id'],))
-    volunteer = cursor.fetchone()
-    
-    if not volunteer:
-        flash('You are not registered as a volunteer', 'error')
-        return redirect(url_for('user_dashboard'))
-    
-    # Get assigned incidents
-    cursor.execute('''
-        SELECT i.*, u.username as reporter_name 
-        FROM incidents i 
-        JOIN users u ON i.user_id = u.id 
-        WHERE i.assigned_to = ? 
-        ORDER BY i.timestamp DESC
-    ''', (session['user_id'],))
-    assigned_incidents = cursor.fetchall()
-    
-    # Get available incidents (not assigned)
-    cursor.execute('''
-        SELECT i.*, u.username as reporter_name 
-        FROM incidents i 
-        JOIN users u ON i.user_id = u.id 
-        WHERE i.assigned_to IS NULL AND i.status = 'reported'
-        ORDER BY i.priority DESC, i.timestamp ASC
-    ''')
-    available_incidents = cursor.fetchall()
-    
-    conn.close()
-    
-    return render_template('volunteer_dashboard.html', 
-                         assigned_incidents=assigned_incidents,
-                         available_incidents=available_incidents)
-
 # API endpoint for mobile app
 @app.route('/api/incidents', methods=['GET', 'POST'])
 def api_incidents():
@@ -1182,6 +1053,78 @@ def api_incidents():
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)})
 
+
+# ----------------- VOLUNTEER ROUTES -----------------
+@app.route('/volunteer/register', methods=['GET', 'POST'])
+@login_required
+def volunteer_register():
+    if request.method == 'POST':
+        skills = request.form.get('skills')
+        location = request.form.get('location')
+        
+        conn = sqlite3.connect('pilgrim.db')
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute('''
+                INSERT INTO volunteers (user_id, skills, location)
+                VALUES (?, ?, ?)
+            ''', (session['user_id'], skills, location))
+            
+            conn.commit()
+            flash('Volunteer registration successful!', 'success')
+            return redirect(url_for('user_dashboard'))
+            
+        except sqlite3.IntegrityError:
+            flash('You are already registered as a volunteer', 'info')
+            return redirect(url_for('user_dashboard'))
+        finally:
+            conn.close()
+    
+    return render_template('volunteer_register.html')
+
+# Volunteer dashboard
+@app.route('/volunteer/dashboard')
+@login_required
+def volunteer_dashboard():
+    # Check if user is a volunteer
+    conn = sqlite3.connect('pilgrim.db')
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT * FROM volunteers WHERE user_id = ?', (session['user_id'],))
+    volunteer = cursor.fetchone()
+    
+    if not volunteer:
+        flash('You are not registered as a volunteer', 'error')
+        return redirect(url_for('user_dashboard'))
+    
+    # Get assigned incidents
+    cursor.execute('''
+        SELECT i.*, u.username as reporter_name 
+        FROM incidents i 
+        JOIN users u ON i.user_id = u.id 
+        WHERE i.assigned_to = ? 
+        ORDER BY i.timestamp DESC
+    ''', (session['user_id'],))
+    assigned_incidents = cursor.fetchall()
+    
+    # Get available incidents (not assigned)
+    cursor.execute('''
+        SELECT i.*, u.username as reporter_name 
+        FROM incidents i 
+        JOIN users u ON i.user_id = u.id 
+        WHERE i.assigned_to IS NULL AND i.status = 'reported'
+        ORDER BY i.priority DESC, i.timestamp ASC
+    ''')
+    available_incidents = cursor.fetchall()
+    
+    conn.close()
+    
+    return render_template('volunteer_dashboard.html', 
+                         assigned_incidents=assigned_incidents,
+                         available_incidents=available_incidents)
+
+# ----------------- QR ROUTES -----------------
 @app.route('/download/qr/<int:booking_id>')
 @login_required
 def download_qr_ticket(booking_id):
@@ -1249,6 +1192,84 @@ def download_qr_ticket(booking_id):
 
     return send_file(img_byte_arr, as_attachment=True, download_name=f'Pilgrim_Ticket_{booking_id_str}.png', mimetype='image/png')
 
+@app.route('/admin/process_qr', methods=['POST'])
+@admin_required
+def process_qr():
+    """Process QR codes for slot management"""
+    try:
+        data = request.json
+        qr_data = data.get('qr_data')
+        
+        if not qr_data:
+            return jsonify({'success': False, 'message': 'No QR data received'})
+        
+        # Parse QR data (assuming format: "slot_id:123")
+        if 'slot_id:' in qr_data:
+            slot_id = int(qr_data.split(':')[1])
+        else:
+            # Try to parse as just a number
+            try:
+                slot_id = int(qr_data)
+            except ValueError:
+                return jsonify({'success': False, 'message': 'Invalid QR format'})
+        
+        conn = sqlite3.connect('pilgrim.db')
+        cursor = conn.cursor()
+        
+        # Get current slot info
+        cursor.execute('SELECT available_slots, total_slots FROM time_slots WHERE id = ?', (slot_id,))
+        slot_info = cursor.fetchone()
+        
+        if not slot_info:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Slot not found'})
+        
+        available_slots, total_slots = slot_info
+        
+        # Initialize scan state for this slot if not exists
+        if f'slot_{slot_id}' not in session:
+            session[f'slot_{slot_id}'] = 'available'
+        
+        # Toggle between decreasing and increasing slots
+        if session[f'slot_{slot_id}'] == 'available':
+            # Decrease slots (first scan)
+            if available_slots > 0:
+                new_slots = available_slots - 1
+                cursor.execute('UPDATE time_slots SET available_slots = ? WHERE id = ?', 
+                              (new_slots, slot_id))
+                session[f'slot_{slot_id}'] = 'occupied'
+                action = 'decreased'
+                message = f'Decreased available slots to {new_slots}'
+            else:
+                conn.close()
+                return jsonify({'success': False, 'message': 'No slots available to decrease'})
+        else:
+            # Increase slots (second scan)
+            if available_slots < total_slots:
+                new_slots = available_slots + 1
+                cursor.execute('UPDATE time_slots SET available_slots = ? WHERE id = ?', 
+                              (new_slots, slot_id))
+                session[f'slot_{slot_id}'] = 'available'
+                action = 'increased'
+                message = f'Increased available slots to {new_slots}'
+            else:
+                conn.close()
+                return jsonify({'success': False, 'message': 'Already at maximum slots'})
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'success': True, 
+            'message': message,
+            'action': action,
+            'new_slots': new_slots
+        })
+        
+    except Exception as e:
+        print(f"Error processing QR: {str(e)}")
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'})
+
 @app.route('/payment/verify', methods=['POST'])
 def verify_payment():
     data = request.json
@@ -1279,7 +1300,7 @@ def verify_payment():
         'qr_code': f'QR_{booking_id}'
     })
 
-
+# ----------------- ADMIN ROUTES -----------------
 @app.route('/admin/login', methods=['POST'])
 def admin_login():
     username = request.form.get('username')
@@ -1331,7 +1352,7 @@ def admin_dashboard():
     cursor.execute('''
         SELECT b.booking_id, b.booking_time, t.slot_date, 
                t.start_time || '-' || t.end_time as time_slot, 
-               t.temple_name, v.full_name, v.phone_number, v.email
+               t.temple_name, v.full_name, v.phone_number, v.email, v.age
         FROM bookings b
         JOIN time_slots t ON b.slot_id = t.id
         LEFT JOIN visitors v ON v.booking_id = b.id
@@ -1349,6 +1370,69 @@ def admin_dashboard():
                            total_visitors=total_visitors,
                            total_bookings=total_bookings)
 
+@app.route('/admin/visitors')
+@admin_required
+def admin_visitors():
+    conn = sqlite3.connect('pilgrim.db')
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT v.id, v.full_name, v.age, v.phone_number, v.email, v.address,
+               u.username, b.booking_id, t.temple_name, t.slot_date, 
+               t.start_time || '-' || t.end_time as time_slot,
+               v.created_at
+        FROM visitors v
+        JOIN users u ON v.user_id = u.id
+        JOIN bookings b ON v.booking_id = b.id
+        JOIN time_slots t ON b.slot_id = t.id
+        ORDER BY v.created_at DESC
+    ''')
+    visitors = cursor.fetchall()
+    
+    conn.close()
+    
+    return render_template('admin_visitors.html', visitors=visitors)
+
+# @app.route('/admin/add_test_visitors')
+# @admin_required
+# def add_test_visitors():
+    """Add test visitor data for demonstration"""
+    conn = sqlite3.connect('pilgrim.db')
+    cursor = conn.cursor()
+    
+    # Get a user and booking to associate with test data
+    cursor.execute('SELECT id FROM users LIMIT 1')
+    user = cursor.fetchone()
+    
+    cursor.execute('SELECT id FROM bookings LIMIT 1')
+    booking = cursor.fetchone()
+    
+    if user and booking:
+        user_id = user[0]
+        booking_id = booking[0]
+        
+        # Add some test visitors
+        test_visitors = [
+            ('Rajesh Kumar', 35, '9876543210', 'rajesh@example.com', 'Ahmedabad, Gujarat', user_id, booking_id),
+            ('Priya Shah', 28, '8765432109', 'priya@example.com', 'Vadodara, Gujarat', user_id, booking_id),
+            ('Amit Patel', 42, '7654321098', 'amit@example.com', 'Surat, Gujarat', user_id, booking_id),
+            ('Sneha Desai', 31, '6543210987', 'sneha@example.com', 'Rajkot, Gujarat', user_id, booking_id),
+        ]
+        
+        cursor.executemany('''
+            INSERT INTO visitors (full_name, age, phone_number, email, address, user_id, booking_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', test_visitors)
+        
+        conn.commit()
+        flash("Test visitors added successfully", "success")
+    else:
+        flash("No users or bookings found to associate with test visitors", "error")
+    
+    conn.close()
+    return redirect(url_for('admin_visitors'))
+
+
 @app.route("/admin/notifications")
 def view_notifications():
     conn = sqlite3.connect("pilgrim.db")
@@ -1358,7 +1442,7 @@ def view_notifications():
     conn.close()
     return render_template("admin_notifications.html", logs=logs)
 
-
+# ----------------- VISUALISATION ROUTES -----------------
 @app.route('/visualization')
 def visualization():
     conn = sqlite3.connect('pilgrim.db')
@@ -1367,11 +1451,6 @@ def visualization():
     historical_data = cursor.fetchall()
     conn.close()
     return render_template('visualization.html', historical_data=historical_data)
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('home'))
 
 # ----------------- CROWD PREDICTION ROUTES -----------------
 @app.route('/predict_crowd')
@@ -1422,7 +1501,6 @@ FESTIVAL_DATES = {
     '2025-10-20': 'Diwali',
     '2025-12-25': 'Christmas',
 }
-
 @app.route('/api/predict_crowd', methods=['POST'])
 @login_required
 def api_predict_crowd():
@@ -1454,6 +1532,13 @@ def api_predict_crowd():
     
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
+
+# ----------------- LOGOUT ROUTES -----------------
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('home'))
+
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -1,22 +1,89 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>User Registration</title>
-</head>
-<body>
-    <h2>Register</h2>
-    <form method="POST" action="{{ url_for('user_register') }}">
-        <label>Username:</label><br>
-        <input type="text" name="username" required><br><br>
+{% extends "base.html" %}
 
-        <label>Email:</label><br>
-        <input type="email" name="email" required><br><br>
+{% block content %}
+<style>
+    /* Styles adapted from your login page for consistency */
+    .btn-spiritual {
+        background: var(--spiritual-gradient); /* Uses your existing gradient */
+        color: white;
+        border: none;
+        transition: all 0.3s ease;
+    }
+    .btn-spiritual:hover {
+        background: linear-gradient(135deg, #7C4A00 0%, #A0522D 100%); /* Slightly darker hover */
+        color: white;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+    .card-header.user-header {
+        background: var(--spiritual-gradient); /* Matches the user login card header */
+        color: white;
+    }
+</style>
 
-        <label>Password:</label><br>
-        <input type="password" name="password" required><br><br>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10">
+            <div class="card animate-fadeIn" style="animation-delay: 0.2s;">
+                <div class="card-header text-center user-header">
+                    <h3 class="mb-0" style="font-weight: 600;"><i class="fas fa-user-plus me-2"></i>Create Your Pilgrim Account</h3>
+                </div>
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} animate-fadeIn">{{ message }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+                    
+                    <form action="{{ url_for('user_register') }}" method="post">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                <input type="text" class="form-control" id="username" name="username" 
+                                       placeholder="Choose a username" required>
+                            </div>
+                        </div>
 
-        <button type="submit">Register</button>
-    </form>
-    <p>Already have an account? <a href="{{ url_for('index') }}">Login here</a></p>
-</body>
-</html>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email Address</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       placeholder="Enter your email" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                <input type="password" class="form-control" id="password" name="password" 
+                                       placeholder="Create a strong password" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="confirm_password" class="form-label">Confirm Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" 
+                                       placeholder="Confirm your password" required>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-spiritual w-100 pulse mt-3">
+                            <i class="fas fa-user-plus"></i> Register
+                        </button>
+                    </form>
+
+                    <p class="text-center text-muted mt-4">
+                        Already have an account? <a href="{{ url_for('login') }}" class="spiritual-text">Login here</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

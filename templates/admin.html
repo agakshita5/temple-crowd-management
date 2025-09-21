@@ -1,130 +1,221 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-12">
-        <h2>Admin Dashboard</h2>
-        <p class="lead">Manage temple crowd and bookings</p>
-    </div>
-</div>
-
-<div class="row mt-4">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h5>7-Day Crowd Prediction for {{ temple_name }}</h5>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Predicted Crowd</th>
-                                <th>Status</th>
-                                <th>Recommended Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for day in predictions %}
-                            <tr>
-                                <td>{{ day.date }}</td>
-                                <td>{{ day.prediction }} people</td>
-                                <td>
-                                    {% if day.prediction < 10000 %}
-                                    <span class="badge bg-success">Low</span>
-                                    {% elif day.prediction < 30000 %}
-                                    <span class="badge bg-warning">Moderate</span>
-                                    {% else %}
-                                    <span class="badge bg-danger">High</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if day.prediction < 10000 %}
-                                    Normal operations
-                                    {% elif day.prediction < 30000 %}
-                                    Add extra staff
-                                    {% else %}
-                                    Implement crowd control measures
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+<div class="container mt-4">
+    <h2 class="spiritual-text">Admin Dashboard - {{ temple_name }}</h2>
+    
+    <!-- 7-Day Crowd Predictions -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>7-Day Crowd Predictions</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for day in predictions %}
+                <div class="col-md-3 mb-3">
+                    <div class="card {% if day['prediction']['estimated_footfall'] < 10000 %}bg-success text-white
+                                    {% elif day['prediction']['estimated_footfall'] < 25000 %}bg-warning
+                                    {% else %}bg-danger text-white{% endif %}">
+                        <div class="card-body text-center">
+                            <h6>{{ day['date'].strftime('%a, %b %d') }}</h6>
+                            <h4>{{ day['prediction']['estimated_footfall']|int }} devotees</h4>
+                            <small>
+                                Level: {{ day['prediction']['crowd_level'] }}
+                            </small>
+                            <br>
+                            <small class="d-block mt-1">
+                                {{ day['prediction']['recommendation'] }}
+                            </small>
+                        </div>
+                    </div>
                 </div>
+                {% endfor %}
             </div>
         </div>
     </div>
-</div>
 
-<div class="row mt-4">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-header bg-info text-white">
-                <h5>Recent Bookings</h5>
-            </div>
-            <div class="card-body">
-                {% if recent_bookings %}
-                <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Booking ID</th>
-                                <th>Booking Time</th>
-                                <th>Visit Date</th>
-                                <th>Time Slot</th>
-                                <th>Temple</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for booking in recent_bookings %}
-                            <tr>
-                                <td>{{ booking[0] }}</td>
-                                <td>{{ booking[1] }}</td>
-                                <td>{{ booking[2] }}</td>
-                                <td>{{ booking[3] }}</td>
-                                <td>{{ booking[4] }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <div class="alert alert-info">
-                    No recent bookings found.
-                </div>
-                {% endif %}
-            </div>
+    <!-- Statistics Card -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Statistics</h5>
         </div>
-    </div>
-</div>
-
-<div class="row mt-4">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-header bg-warning text-dark">
-                <h5>Admin Actions</h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-3 mb-2">
-                        <a href="{{ url_for('visualization') }}" class="btn btn-outline-primary w-100">View Visualization</a>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card bg-light mb-3">
+                        <div class="card-body text-center">
+                            <h3>{{ total_bookings }}</h3>
+                            <p class="text-muted">Total Bookings</p>
+                        </div>
                     </div>
-                    <div class="col-md-3 mb-2">
-                        <button class="btn btn-outline-info w-100">Manage Time Slots</button>
-                    </div>
-                    <div class="col-md-3 mb-2">
-                        <button class="btn btn-outline-success w-100">Generate Reports</button>
-                    </div>
-                    <div class="col-md-3 mb-2">
-                        <button class="btn btn-outline-danger w-100">Send Notifications</button>
+                </div>
+                <div class="col-md-6">
+                    <div class="card bg-light mb-3">
+                        <div class="card-body text-center">
+                            <h3>{{ total_visitors }}</h3>
+                            <p class="text-muted">Total Visitors</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- QR Scanner for Slot Management -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>QR Scanner for Slot Management</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <div id="qr-reader" style="width: 100%"></div>
+                    <div id="qr-reader-results" class="mt-3"></div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6>Scan Instructions</h6>
+                        </div>
+                        <div class="card-body">
+                            <p>Scan a QR code to manage slots:</p>
+                            <ul>
+                                <li>First scan: entry</li>
+                                <li>Second scan: exit</li>
+                            </ul>
+                            <div class="mt-3">
+                                <h6>Current Status: <span id="scan-status" class="badge bg-info">Ready to scan</span></h6>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Bookings with Visitor Info -->
+    <div class="card">
+        <div class="card-header">
+            <h5>Recent Bookings with Visitor Details</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Booking ID</th>
+                            <th>Booking Time</th>
+                            <th>Date</th>
+                            <th>Time Slot</th>
+                            <th>Temple</th>
+                            <th>Visitor Name</th>
+                            <th>Phone</th>
+                            <th>Email</th>
+                            <th>Age</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for booking in recent_bookings %}
+                        <tr>
+                            <td>{{ booking[0] }}</td>
+                            <td>{{ booking[1] }}</td>
+                            <td>{{ booking[2] }}</td>
+                            <td>{{ booking[3] }}</td>
+                            <td>{{ booking[4] }}</td>
+                            <td>{{ booking[5] or 'Not provided' }}</td>
+                            <td>{{ booking[6] or 'Not provided' }}</td>
+                            <td>{{ booking[7] or 'Not provided' }}</td>
+                            <td>{{ booking[8] or 'N/A' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
-
-
+<script>
+    // Track scan states
+    let scanStates = {};
+    
+    function onScanSuccess(decodedText, decodedResult) {
+        // Handle the scanned code
+        console.log(`Scan result: ${decodedText}`, decodedResult);
+        
+        // Show result
+        const resultElement = document.getElementById('qr-reader-results');
+        resultElement.innerHTML = `<div class="alert alert-info">Scanned: ${decodedText}</div>`;
+        
+        // Send to server for processing
+        processQRCode(decodedText);
+    }
+    
+    function onScanFailure(error) {
+        // Handle scan failure
+        console.warn(`QR error = ${error}`);
+    }
+    
+    // Initialize QR Scanner
+    const html5QrcodeScanner = new Html5QrcodeScanner(
+        "qr-reader", 
+        { 
+            fps: 10, 
+            qrbox: { width: 250, height: 250 } 
+        },
+        false
+    );
+    
+    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+    
+    // Process the scanned QR code
+    function processQRCode(qrData) {
+        const statusElement = document.getElementById('scan-status');
+        statusElement.className = 'badge bg-warning';
+        statusElement.textContent = 'Processing...';
+        
+        fetch('/admin/process_qr', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ qr_data: qrData })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                statusElement.className = 'badge bg-success';
+                statusElement.textContent = `Slots ${data.action}`;
+                
+                // Show success message
+                const resultElement = document.getElementById('qr-reader-results');
+                resultElement.innerHTML = `
+                    <div class="alert alert-success">
+                        <strong>Success!</strong> ${data.message}
+                    </div>
+                `;
+                
+                // Reload the page after 2 seconds to see updated slot counts
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } else {
+                statusElement.className = 'badge bg-danger';
+                statusElement.textContent = 'Error';
+                
+                // Show error message
+                const resultElement = document.getElementById('qr-reader-results');
+                resultElement.innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>Error:</strong> ${data.message}
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            statusElement.className = 'badge bg-danger';
+            statusElement.textContent = 'Error';
+        });
+    }
+</script>
 {% endblock %}
