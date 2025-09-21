@@ -32,10 +32,31 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('report_incident') }}">
+                        <i class="fas fa-exclamation-circle me-1"></i>Report Incident
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('my_incidents') }}">
+                        <i class="fas fa-list me-1"></i>My Incidents
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('volunteer_register') }}">
+                        <i class="fas fa-hands-helping me-1"></i>Become Volunteer
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('volunteer_dashboard') }}">
+                        <i class="fas fa-user-shield me-1"></i>Volunteer Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('logout') }}">
                         <i class="fas fa-sign-out-alt me-1"></i>Logout
                     </a>
                 </li>
+                
                 {% elif 'admin_id' in session %}
 
                 <li class="nav-item">

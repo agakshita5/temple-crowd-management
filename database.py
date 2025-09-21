@@ -107,10 +107,7 @@ def init_db():
         FOREIGN KEY (user_id) REFERENCES users (id)
     )
 ''')
-    cursor.execute('''
-    ALTER TABLE donations
-    ADD COLUMN payment_method TEXT
-''')
+
 
     # -------------------------
     # Accommodation bookings table
@@ -172,6 +169,24 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    # -------------------------
+    # Visitors table (NEW - with proper foreign keys)
+    # -------------------------
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS visitors (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            full_name TEXT NOT NULL,
+            age INTEGER,
+            phone_number TEXT,
+            email TEXT,
+            address TEXT,
+            user_id INTEGER NOT NULL,
+            booking_id INTEGER NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (booking_id) REFERENCES bookings(id)
+        )
+    ''')
 
     # -------------------------
     # Insert demo admin if not exists
@@ -183,7 +198,23 @@ def init_db():
             INSERT INTO admins (username, password_hash)
             VALUES (?, ?)
         ''', ('admin', password_hash))
-
+    # Visitors table (for storing visitor details from the form)
+    # -------------------------
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS visitors (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            full_name TEXT NOT NULL,
+            age INTEGER NOT NULL,
+            phone_number TEXT NOT NULL,
+            email TEXT NOT NULL,
+            address TEXT NOT NULL,
+            user_id INTEGER NOT NULL,
+            booking_id INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (booking_id) REFERENCES bookings(id)
+        )
+    ''')
     # -------------------------
     # Insert demo user if not exists
     # -------------------------
@@ -194,7 +225,48 @@ def init_db():
             INSERT INTO users (username, email, password_hash)
             VALUES (?, ?, ?)
         ''', ('demo_user', 'demo@example.com', password_hash))
-
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS incidents (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            type TEXT NOT NULL,
+            description TEXT NOT NULL,
+            location TEXT,
+            status TEXT DEFAULT 'reported',
+            priority TEXT DEFAULT 'medium',
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            user_id INTEGER,
+            assigned_to INTEGER,
+            image_path TEXT,
+            FOREIGN KEY (user_id) REFERENCES users (id),
+            FOREIGN KEY (assigned_to) REFERENCES users (id)
+        )
+    ''')
+    
+    # Create incident_updates table for tracking status changes
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS incident_updates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            incident_id INTEGER,
+            status TEXT,
+            notes TEXT,
+            updated_by INTEGER,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (incident_id) REFERENCES incidents (id),
+            FOREIGN KEY (updated_by) REFERENCES users (id)
+        )
+    ''')
+    
+    # Create volunteers table if not exists
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS volunteers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER UNIQUE,
+            is_available BOOLEAN DEFAULT TRUE,
+            skills TEXT,
+            location TEXT,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
     # -------------------------
     # Insert sample time slots if not exists
     # -------------------------

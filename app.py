@@ -7,17 +7,34 @@ import crowd_prediction
 import qrcode
 import os
 import io
+from flask_sqlalchemy import SQLAlchemy
+from flask_socketio import SocketIO
+
+
 from functools import wraps
 import requests
 import json
 import stripe
+from PIL import Image, ImageDraw, ImageFont
+from io import BytesIO
+from werkzeug.utils import secure_filename
+
 app = Flask(__name__)
 app.secret_key = 'pilgrim_secret_key'
 
 stripe.api_key = "REMOVEDY3IQW8fY5qAnlngq7SziCL1ypMXcLcbiVu0FOQmkkGseDB6wfosb1EoAriqioM8ykZYWmxD2hMYrjAvK4jyxT00nARclhw4"
 STRIPE_PUBLISHABLE_KEY = "REMOVED3IQW8fY5qAnl73PdcNdfIovzFy8mzDHMpWMqSkaiLdq9s2cTQT7JEHfrhUHYL5C16SAXsAJFn7039pPYikvV00aW0yg2Mi"
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///pilgrim.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+socketio = SocketIO(app, cors_allowed_origins="*")
+db = SQLAlchemy(app)
+# ✅ Add file upload configuration here
+app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads')
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
+# Create upload directory if it doesn't exist
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 UPI_ID = "7014080430@axl"
 PAYEE_NAME = "Sonam Yadav"
 # Initialize DB - FIXED SCHEMA
@@ -217,6 +234,335 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+
+# Database Models
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+    
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+class Temple(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    description = db.Column(db.Text)
+    max_capacity = db.Column(db.Integer, default=1000)
+    slots = db.relationship('Slot', backref='temple', lazy=True)
+
+class Slot(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    temple_id = db.Column(db.Integer, db.ForeignKey('temple.id'), nullable=False)
+    start_time = db.Column(db.DateTime, nullable=False)
+    end_time = db.Column(db.DateTime, nullable=False)
+    max_capacity = db.Column(db.Integer, default=100)
+    current_bookings = db.Column(db.Integer, default=0)
+    is_available = db.Column(db.Boolean, default=True)
+    bookings = db.relationship('Booking', backref='slot', lazy=True)
+    
+    @property
+    def available_slots(self):
+        return self.max_capacity - self.current_bookings
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'temple_id': self.temple_id,
+            'temple_name': self.temple.name,
+            'start_time': self.start_time.isoformat(),
+            'end_time': self.end_time.isoformat(),
+            'max_capacity': self.max_capacity,
+            'current_bookings': self.current_bookings,
+            'available_slots': self.available_slots,
+            'is_available': self.is_available
+        }
+
+class Booking(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    slot_id = db.Column(db.Integer, db.ForeignKey('slot.id'), nullable=False)
+    persons = db.Column(db.Integer, default=1)
+    booking_time = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(db.String(20), default='confirmed')  # confirmed, cancelled, completed
+    user = db.relationship('User', backref=db.backref('bookings', lazy=True))
+
+# # Helper Functions
+# def login_required(f):
+#     @wraps(f)
+#     def decorated_function(*args, **kwargs):
+#         if 'user_id' not in session:
+#             return jsonify({'error': 'Login required'}), 401
+#         return f(*args, **kwargs)
+#     return decorated_function
+
+# # Initialize Database with Sample Data
+# def init_db():
+#     db.create_all()
+    
+#     # Create sample temples if they don't exist
+#     if Temple.query.count() == 0:
+#         temples = [
+#             Temple(name='Somnath Temple', description='One of the twelve Jyotirlinga shrines of Shiva', max_capacity=1000),
+#             Temple(name='Dwarka Temple', description='Dedicated to Lord Krishna', max_capacity=800),
+#             Temple(name='Ambaji Temple', description='One of the Shakti Peethas', max_capacity=600)
+#         ]
+#         db.session.bulk_save_objects(temples)
+#         db.session.commit()
+    
+#     # Create sample slots if they don't exist
+#     if Slot.query.count() == 0:
+#         temples = Temple.query.all()
+#         slots = []
+        
+#         for temple in temples:
+#             # Create slots for the next 7 days
+#             for day in range(7):
+#                 date = datetime.now().date() + timedelta(days=day)
+                
+#                 # Morning slots
+#                 slots.append(Slot(
+#                     temple_id=temple.id,
+#                     start_time=datetime.combine(date, datetime.strptime('06:00', '%H:%M').time()),
+#                     end_time=datetime.combine(date, datetime.strptime('07:30', '%H:%M').time()),
+#                     max_capacity=100
+#                 ))
+                
+#                 slots.append(Slot(
+#                     temple_id=temple.id,
+#                     start_time=datetime.combine(date, datetime.strptime('07:30', '%H:%M').time()),
+#                     end_time=datetime.combine(date, datetime.strptime('09:00', '%H:%M').time()),
+#                     max_capacity=100
+#                 ))
+                
+#                 # Day slots
+#                 slots.append(Slot(
+#                     temple_id=temple.id,
+#                     start_time=datetime.combine(date, datetime.strptime('09:00', '%H:%M').time()),
+#                     end_time=datetime.combine(date, datetime.strptime('10:30', '%H:%M').time()),
+#                     max_capacity=100
+#                 ))
+                
+#                 slots.append(Slot(
+#                     temple_id=temple.id,
+#                     start_time=datetime.combine(date, datetime.strptime('10:30', '%H:%M').time()),
+#                     end_time=datetime.combine(date, datetime.strptime('12:00', '%H:%M').time()),
+#                     max_capacity=100
+#                 ))
+        
+#         db.session.bulk_save_objects(slots)
+#         db.session.commit()
+
+# API Routes
+@app.route('/api/register', methods=['POST'])
+def register():
+    data = request.get_json()
+    
+    if not data or not data.get('username') or not data.get('email') or not data.get('password'):
+        return jsonify({'error': 'Username, email and password are required'}), 400
+    
+    if User.query.filter_by(username=data['username']).first():
+        return jsonify({'error': 'Username already exists'}), 400
+    
+    if User.query.filter_by(email=data['email']).first():
+        return jsonify({'error': 'Email already exists'}), 400
+    
+    user = User(username=data['username'], email=data['email'])
+    user.set_password(data['password'])
+    
+    db.session.add(user)
+    db.session.commit()
+    
+    return jsonify({'message': 'User created successfully'}), 201
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    
+    if not data or not data.get('username') or not data.get('password'):
+        return jsonify({'error': 'Username and password are required'}), 400
+    
+    user = User.query.filter_by(username=data['username']).first()
+    
+    if not user or not user.check_password(data['password']):
+        return jsonify({'error': 'Invalid username or password'}), 401
+    
+    session['user_id'] = user.id
+    session['username'] = user.username
+    
+    return jsonify({'message': 'Login successful', 'user': {'id': user.id, 'username': user.username}})
+
+@app.route('/api/logout', methods=['POST'])
+def logout():
+    session.clear()
+    return jsonify({'message': 'Logout successful'})
+
+@app.route('/api/temples', methods=['GET'])
+def get_temples():
+    temples = Temple.query.all()
+    return jsonify([{
+        'id': temple.id,
+        'name': temple.name,
+        'description': temple.description,
+        'max_capacity': temple.max_capacity
+    } for temple in temples])
+
+@app.route('/api/slots', methods=['GET'])
+def get_slots():
+    temple_id = request.args.get('temple_id')
+    date_str = request.args.get('date')
+    
+    query = Slot.query.join(Temple)
+    
+    if temple_id:
+        query = query.filter(Slot.temple_id == temple_id)
+    
+    if date_str:
+        try:
+            date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            query = query.filter(db.func.date(Slot.start_time) == date)
+        except ValueError:
+            return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+    
+    slots = query.all()
+    return jsonify([slot.to_dict() for slot in slots])
+
+@app.route('/api/slots/<int:slot_id>', methods=['GET'])
+def get_slot(slot_id):
+    slot = Slot.query.get_or_404(slot_id)
+    return jsonify(slot.to_dict())
+
+@app.route('/api/bookings', methods=['POST'])
+@login_required
+def create_booking():
+    data = request.get_json()
+    
+    if not data or not data.get('slot_id') or not data.get('persons'):
+        return jsonify({'error': 'Slot ID and number of persons are required'}), 400
+    
+    slot = Slot.query.get(data['slot_id'])
+    
+    if not slot:
+        return jsonify({'error': 'Slot not found'}), 404
+    
+    if not slot.is_available:
+        return jsonify({'error': 'Slot is not available'}), 400
+    
+    if slot.available_slots < data['persons']:
+        return jsonify({'error': f'Only {slot.available_slots} slots available'}), 400
+    
+    # Create booking
+    booking = Booking(
+        user_id=session['user_id'],
+        slot_id=data['slot_id'],
+        persons=data['persons']
+    )
+    
+    # Update slot availability
+    slot.current_bookings += data['persons']
+    if slot.current_bookings >= slot.max_capacity:
+        slot.is_available = False
+    
+    db.session.add(booking)
+    db.session.commit()
+    
+    # Emit real-time update
+    socketio.emit('slot_update', slot.to_dict(), namespace='/')
+    
+    return jsonify({
+        'message': 'Booking successful',
+        'booking_id': booking.id,
+        'slot': slot.to_dict()
+    }), 201
+
+@app.route('/api/bookings/<int:booking_id>', methods=['DELETE'])
+@login_required
+def cancel_booking(booking_id):
+    booking = Booking.query.get_or_404(booking_id)
+    
+    # Check if user owns the booking
+    if booking.user_id != session['user_id']:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    slot = Slot.query.get(booking.slot_id)
+    
+    # Update slot availability
+    slot.current_bookings -= booking.persons
+    if slot.current_bookings < slot.max_capacity:
+        slot.is_available = True
+    
+    # Delete booking
+    db.session.delete(booking)
+    db.session.commit()
+    
+    # Emit real-time update
+    socketio.emit('slot_update', slot.to_dict(), namespace='/')
+    
+    return jsonify({'message': 'Booking cancelled successfully'})
+
+@app.route('/api/user/bookings', methods=['GET'])
+@login_required
+def get_user_bookings():
+    bookings = Booking.query.filter_by(user_id=session['user_id']).all()
+    
+    result = []
+    for booking in bookings:
+        result.append({
+            'id': booking.id,
+            'slot_id': booking.slot_id,
+            'temple_name': booking.slot.temple.name,
+            'start_time': booking.slot.start_time.isoformat(),
+            'end_time': booking.slot.end_time.isoformat(),
+            'persons': booking.persons,
+            'booking_time': booking.booking_time.isoformat(),
+            'status': booking.status
+        })
+    
+    return jsonify(result)
+
+# Socket.IO Events
+@socketio.on('connect')
+def handle_connect():
+    print(f'Client connected: {request.sid}')
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print(f'Client disconnected: {request.sid}')
+
+@socketio.on('subscribe_to_slots')
+def handle_subscribe_to_slots():
+    # Send current slot data to newly connected client
+    slots = Slot.query.all()
+    for slot in slots:
+        emit('slot_update', slot.to_dict())
+
+# Background task to reset slots daily
+def reset_slots_daily():
+    with app.app_context():
+        while True:
+            now = datetime.now()
+            # Check if it's midnight
+            if now.hour == 0 and now.minute == 0:
+                # Reset all slots for the next day
+                tomorrow = now.date() + timedelta(days=1)
+                slots = Slot.query.filter(db.func.date(Slot.start_time) == tomorrow).all()
+                
+                for slot in slots:
+                    slot.current_bookings = 0
+                    slot.is_available = True
+                
+                db.session.commit()
+                print(f"Reset slots for {tomorrow}")
+            
+            socketio.sleep(60)  # Check every minute
+
+# Initialize the database when the app starts
+init_db()
 # Routes
 @app.route('/')
 def index():
@@ -539,99 +885,6 @@ def donation_cancel():
     flash("Payment cancelled", "info")
     return redirect(url_for('donate'))
 
-# # ----------------- DONATION ROUTES -----------------
-# @app.route('/donate', methods=['GET', 'POST'])
-# @login_required
-# def donate():
-#     if request.method == 'POST':
-#         amount = request.form.get('amount')
-#         donation_type = request.form.get('donation_type')
-#         message = request.form.get('message', '')
-
-#         if not amount or not donation_type:
-#             flash("Please fill all required fields", "error")
-#             return redirect(url_for('donate'))
-
-#         try:
-#             amount = float(amount)
-#             if amount <= 0:
-#                 flash("Please enter a valid donation amount", "error")
-#                 return redirect(url_for('donate'))
-#         except ValueError:
-#             flash("Please enter a valid donation amount", "error")
-#             return redirect(url_for('donate'))
-
-#         conn = sqlite3.connect('pilgrim.db')
-#         cursor = conn.cursor()
-#         cursor.execute('''
-#             INSERT INTO donations (user_id, amount, donation_type, message, payment_status)
-#             VALUES (?, ?, ?, ?, ?)
-#         ''', (session['user_id'], amount, donation_type, message, 'pending'))
-#         donation_id = cursor.lastrowid
-#         conn.commit()
-#         conn.close()
-
-#         return redirect(url_for('donate_upi_qr', donation_id=donation_id))
-
-#     return render_template('donate.html')
-
-# @app.route('/donate/upi_qr/<int:donation_id>')
-# @login_required
-# def donate_upi_qr(donation_id):
-#     # Fetch donation info
-#     conn = sqlite3.connect('pilgrim.db')
-#     cursor = conn.cursor()
-#     cursor.execute('SELECT amount, donation_type FROM donations WHERE id = ?', (donation_id,))
-#     donation = cursor.fetchone()
-#     conn.close()
-
-#     if not donation:
-#         flash("Donation record not found", "error")
-#         return redirect(url_for('donate'))
-
-#     amount, donation_type = donation
-
-#     # UPI details
-    
-#     transaction_note = donation_type
-
-#     # Generate UPI link
-#     upi_link = f"upi://pay?pa={upi_id}&pn={payee_name}&tn={transaction_note}&am={amount}&cu=INR"
-
-#     # Generate QR code
-#     qr = qrcode.QRCode(
-#         version=1,
-#         error_correction=qrcode.constants.ERROR_CORRECT_L,
-#         box_size=10,
-#         border=4
-#     )
-#     qr.add_data(upi_link)
-#     qr.make(fit=True)
-#     img = qr.make_image(fill_color="black", back_color="white")
-
-#     img_buffer = io.BytesIO()
-#     img.save(img_buffer, format='PNG')
-#     img_buffer.seek(0)
-
-#     return send_file(
-#         img_buffer,
-#         mimetype='image/png',
-#         as_attachment=False,
-#         download_name=f'donation_{donation_id}_upi.png'
-#     )
-
-# @app.route('/donate/confirm/<int:donation_id>')
-# @login_required
-# def donate_confirm(donation_id):
-#     # Mark donation as paid manually (after scanning UPI)
-#     conn = sqlite3.connect('pilgrim.db')
-#     cursor = conn.cursor()
-#     cursor.execute('UPDATE donations SET payment_status = ? WHERE id = ?', ('paid', donation_id))
-#     conn.commit()
-#     conn.close()
-
-#     flash("Thank you for your donation! Payment confirmed successfully.", "success")
-#     return redirect(url_for('user_dashboard'))
 
 @app.route('/applications')
 @login_required
@@ -960,143 +1213,7 @@ def verify_payment():
         'qr_code': f'QR_{booking_id}'
     })
 
-# # Donation Routes
-# @app.route('/donate', methods=['GET'])
-# @login_required
-# def donate():
-#     return render_template('donate.html', key_id=RAZORPAY_KEY_ID)
 
-# @app.route('/create_order', methods=['POST'])
-# @login_required
-# def create_order():
-#     amount = int(request.form.get('amount')) * 100  # amount in paise
-#     donation_type = request.form.get('donation_type')
-#     message = request.form.get('message', '')
-
-#     order_data = {
-#         "amount": amount,
-#         "currency": "INR",
-#         "payment_capture": "1"
-#     }
-#     razorpay_order = client.order.create(data=order_data)
-#     order_id = razorpay_order['id']
-
-#     # Save donation in DB as pending
-#     conn = sqlite3.connect('pilgrim.db')
-#     cursor = conn.cursor()
-#     cursor.execute('''
-#         INSERT INTO donations (user_id, amount, donation_type, message, payment_status)
-#         VALUES (?, ?, ?, ?, ?)
-#     ''', (session['user_id'], amount/100, donation_type, message, 'pending'))
-#     donation_id = cursor.lastrowid
-#     conn.commit()
-#     conn.close()
-
-#     return render_template('pay.html',
-#                            donation_id=donation_id,
-#                            order_id=order_id,
-#                            amount=amount,
-#                            key_id=RAZORPAY_KEY_ID)
-
-# @app.route('/payment_success', methods=['POST'])
-# @login_required
-# def payment_success():
-#     payment_id = request.form.get('razorpay_payment_id')
-#     order_id = request.form.get('razorpay_order_id')
-#     signature = request.form.get('razorpay_signature')
-#     donation_id = request.form.get('donation_id')
-
-#     params_dict = {
-#         'razorpay_order_id': order_id,
-#         'razorpay_payment_id': payment_id,
-#         'razorpay_signature': signature
-#     }
-
-#     try:
-#         # Verify signature with Razorpay
-#         client.utility.verify_payment_signature(params_dict)
-#         conn = sqlite3.connect('pilgrim.db')
-#         cursor = conn.cursor()
-#         cursor.execute('UPDATE donations SET payment_status = ? WHERE id = ?', ('completed', donation_id))
-#         conn.commit()
-#         conn.close()
-#         return jsonify({"success": True})
-#     except Exception as e:
-#         conn = sqlite3.connect('pilgrim.db')
-#         cursor = conn.cursor()
-#         cursor.execute('UPDATE donations SET payment_status = ? WHERE id = ?', ('failed', donation_id))
-#         conn.commit()
-#         conn.close()
-#         print("Payment verification error:", e)
-#         return jsonify({"success": False})
-
-
-
-# @app.route('/donate/process', methods=['POST'])
-# @login_required
-# def process_donation():
-#     amount = request.form.get('amount')
-#     donation_type = request.form.get('donation_type')
-#     message = request.form.get('message', '')
-
-#     if not amount or not donation_type:
-#         flash("Please fill all required fields", "error")
-#         return redirect(url_for('donate'))
-
-#     try:
-#         amount = float(amount)
-#         if amount <= 0:
-#             flash("Please enter a valid donation amount", "error")
-#             return redirect(url_for('donate'))
-#     except ValueError:
-#         flash("Please enter a valid donation amount", "error")
-#         return redirect(url_for('donate'))
-
-#     conn = sqlite3.connect('pilgrim.db')
-#     cursor = conn.cursor()
-
-#     # Insert donation record with pending payment
-#     cursor.execute('''
-#         INSERT INTO donations (user_id, amount, donation_type, message, payment_status)
-#         VALUES (?, ?, ?, ?, ?)
-#     ''', (session['user_id'], amount, donation_type, message, 'pending'))
-
-#     donation_id = cursor.lastrowid
-
-#     # Log notification for admin
-#     cursor.execute('''
-#         INSERT INTO notifications_log (recipient, subject, status)
-#         VALUES (?, ?, ?)
-#     ''', ('admin', f'New Donation - ₹{amount} for {donation_type}', 'info'))
-
-#     conn.commit()
-#     conn.close()
-
-#     # Simulate payment success (In real app, integrate a gateway like Razorpay/UPI)
-#     return redirect(url_for('donation_payment_success', donation_id=donation_id))
-
-
-# # Route to simulate payment success
-# @app.route('/donate/success/<int:donation_id>')
-# @login_required
-# def donation_payment_success(donation_id):
-#     conn = sqlite3.connect('pilgrim.db')
-#     cursor = conn.cursor()
-
-#     # Update donation as paid
-#     cursor.execute('''
-#         UPDATE donations
-#         SET payment_status = ?
-#         WHERE id = ?
-#     ''', ('paid', donation_id))
-#     conn.commit()
-#     conn.close()
-
-#     flash('Thank you for your donation! Payment confirmed successfully.', 'success')
-#     return redirect(url_for('applications'))
-
-
-# Admin view donations
 @app.route('/admin/donations')
 @admin_required
 def admin_donations():
@@ -1208,6 +1325,355 @@ def view_notifications():
     logs = cursor.fetchall()
     conn.close()
     return render_template("admin_notifications.html", logs=logs)
+#rishika
+@app.route('/my-account')
+@login_required
+def my_account():
+    conn = sqlite3.connect('pilgrim.db')
+    cursor = conn.cursor()
+    
+    # Get user details
+    cursor.execute('SELECT username, email, created_at FROM users WHERE id = ?', (session['user_id'],))
+    user_data = cursor.fetchone()
+    
+    # Get booking count
+    cursor.execute('SELECT COUNT(*) FROM bookings WHERE user_id = ?', (session['user_id'],))
+    booking_count = cursor.fetchone()[0]
+    
+    # Get visitor count
+    cursor.execute('SELECT COUNT(*) FROM visitors WHERE user_id = ?', (session['user_id'],))
+    visitor_count = cursor.fetchone()[0]
+    
+    conn.close()
+    
+    return render_template('my_account.html', 
+                         user_data=user_data, 
+                         booking_count=booking_count,
+                         visitor_count=visitor_count)
+# Incident Reporting Routes
+@app.route('/report/incident', methods=['GET', 'POST'])
+@login_required
+def report_incident():
+    if request.method == 'POST':
+        try:
+            incident_type = request.form.get('type')
+            description = request.form.get('description')
+            location = request.form.get('location')
+            priority = request.form.get('priority', 'medium')
+            
+            # Handle file upload if exists
+            image_path = None
+            if 'image' in request.files:
+                image = request.files['image']
+                if image and image.filename != '':
+                    filename = secure_filename(image.filename)
+                    image_path = os.path.join(app.config['UPLOAD_FOLDER'], f"incident_{datetime.now().timestamp()}_{filename}")
+                    image.save(image_path)
+            
+            conn = sqlite3.connect('pilgrim.db')
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                INSERT INTO incidents (type, description, location, priority, user_id, image_path)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (incident_type, description, location, priority, session['user_id'], image_path))
+            
+            incident_id = cursor.lastrowid
+            
+            # Add initial status update
+            cursor.execute('''
+                INSERT INTO incident_updates (incident_id, status, updated_by, notes)
+                VALUES (?, ?, ?, ?)
+            ''', (incident_id, 'reported', session['user_id'], 'Incident reported'))
+            
+            conn.commit()
+            conn.close()
+            
+            flash('Incident reported successfully!', 'success')
+            return redirect(url_for('view_incident', incident_id=incident_id))
+            
+        except Exception as e:
+            flash(f'Error reporting incident: {str(e)}', 'error')
+            return redirect(url_for('report_incident'))
+    
+    return render_template('report_incident.html')
+
+@app.route('/incident/<int:incident_id>')
+@login_required
+def view_incident(incident_id):
+    conn = sqlite3.connect('pilgrim.db')
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT i.*, u.username as reporter_name 
+        FROM incidents i 
+        JOIN users u ON i.user_id = u.id 
+        WHERE i.id = ?
+    ''', (incident_id,))
+    incident = cursor.fetchone()
+    
+    cursor.execute('''
+        SELECT u.*, iu.status, iu.notes, iu.timestamp 
+        FROM incident_updates iu 
+        JOIN users u ON iu.updated_by = u.id 
+        WHERE iu.incident_id = ? 
+        ORDER BY iu.timestamp DESC
+    ''', (incident_id,))
+    updates = cursor.fetchall()
+    
+    # Get available volunteers for assignment
+    cursor.execute('''
+        SELECT v.user_id, u.username, v.skills, v.location 
+        FROM volunteers v 
+        JOIN users u ON v.user_id = u.id 
+        WHERE v.is_available = 1
+    ''')
+    volunteers = cursor.fetchall()
+    
+    conn.close()
+    
+    if not incident:
+        flash('Incident not found', 'error')
+        return redirect(url_for('user_dashboard'))
+    
+    return render_template('view_incident.html', 
+                         incident=incident, 
+                         updates=updates, 
+                         volunteers=volunteers)
+
+@app.route('/incident/update', methods=['POST'])
+@login_required
+def update_incident():
+    incident_id = request.form.get('incident_id')
+    status = request.form.get('status')
+    notes = request.form.get('notes')
+    assigned_to = request.form.get('assigned_to')
+    
+    conn = sqlite3.connect('pilgrim.db')
+    cursor = conn.cursor()
+    
+    # Update incident status
+    cursor.execute('UPDATE incidents SET status = ? WHERE id = ?', (status, incident_id))
+    
+    # Add status update
+    cursor.execute('''
+        INSERT INTO incident_updates (incident_id, status, updated_by, notes)
+        VALUES (?, ?, ?, ?)
+    ''', (incident_id, status, session['user_id'], notes))
+    
+    # Assign to volunteer if provided
+    if assigned_to and assigned_to != '0':
+        cursor.execute('UPDATE incidents SET assigned_to = ? WHERE id = ?', (assigned_to, incident_id))
+    
+    conn.commit()
+    conn.close()
+    
+    flash('Incident updated successfully', 'success')
+    return redirect(url_for('view_incident', incident_id=incident_id))
+
+@app.route('/my/incidents')
+@login_required
+def my_incidents():
+    conn = sqlite3.connect('pilgrim.db')
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT i.*, u.username as reporter_name, 
+               vu.username as assigned_name 
+        FROM incidents i 
+        JOIN users u ON i.user_id = u.id 
+        LEFT JOIN users vu ON i.assigned_to = vu.id 
+        WHERE i.user_id = ? 
+        ORDER BY i.timestamp DESC
+    ''', (session['user_id'],))
+    incidents = cursor.fetchall()
+    
+    conn.close()
+    
+    return render_template('my_incidents.html', incidents=incidents)
+
+# Admin incident management
+@app.route('/admin/incidents')
+@admin_required
+def admin_incidents():
+    status_filter = request.args.get('status', 'all')
+    
+    conn = sqlite3.connect('pilgrim.db')
+    cursor = conn.cursor()
+    
+    if status_filter == 'all':
+        cursor.execute('''
+            SELECT i.*, u.username as reporter_name, 
+                   vu.username as assigned_name 
+            FROM incidents i 
+            JOIN users u ON i.user_id = u.id 
+            LEFT JOIN users vu ON i.assigned_to = vu.id 
+            ORDER BY i.timestamp DESC
+        ''')
+    else:
+        cursor.execute('''
+            SELECT i.*, u.username as reporter_name, 
+                   vu.username as assigned_name 
+            FROM incidents i 
+            JOIN users u ON i.user_id = u.id 
+            LEFT JOIN users vu ON i.assigned_to = vu.id 
+            WHERE i.status = ?
+            ORDER BY i.timestamp DESC
+        ''', (status_filter,))
+    
+    incidents = cursor.fetchall()
+    
+    # Get statistics
+    cursor.execute('''
+        SELECT status, COUNT(*) as count 
+        FROM incidents 
+        GROUP BY status
+    ''')
+    stats = cursor.fetchall()
+    
+    conn.close()
+    
+    return render_template('admin_incidents.html', 
+                         incidents=incidents, 
+                         stats=stats, 
+                         status_filter=status_filter)
+# API endpoint for mobile app
+@app.route('/api/incidents', methods=['GET', 'POST'])
+def api_incidents():
+    if request.method == 'GET':
+        # Get incidents based on filters
+        status = request.args.get('status', 'reported')
+        limit = request.args.get('limit', 50)
+        
+        conn = sqlite3.connect('pilgrim.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT i.*, u.username as reporter_name 
+            FROM incidents i 
+            JOIN users u ON i.user_id = u.id 
+            WHERE i.status = ?
+            ORDER BY i.timestamp DESC
+            LIMIT ?
+        ''', (status, limit))
+        
+        incidents = cursor.fetchall()
+        conn.close()
+        
+        # Convert to list of dictionaries
+        result = []
+        for incident in incidents:
+            result.append({
+                'id': incident[0],
+                'type': incident[1],
+                'description': incident[2],
+                'location': incident[3],
+                'status': incident[4],
+                'priority': incident[5],
+                'timestamp': incident[6],
+                'reporter_name': incident[10]
+            })
+        
+        return jsonify(result)
+    
+    elif request.method == 'POST':
+        # Report new incident via API
+        try:
+            data = request.get_json()
+            
+            conn = sqlite3.connect('pilgrim.db')
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                INSERT INTO incidents (type, description, location, priority, user_id)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (data['type'], data['description'], data.get('location'), 
+                 data.get('priority', 'medium'), data.get('user_id', 1)))
+            
+            incident_id = cursor.lastrowid
+            
+            # Add initial status update
+            cursor.execute('''
+                INSERT INTO incident_updates (incident_id, status, updated_by, notes)
+                VALUES (?, ?, ?, ?)
+            ''', (incident_id, 'reported', data.get('user_id', 1), 'Incident reported via API'))
+            
+            conn.commit()
+            conn.close()
+            
+            return jsonify({'success': True, 'incident_id': incident_id})
+            
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)})
+# Volunteer registration
+@app.route('/volunteer/register', methods=['GET', 'POST'])
+@login_required
+def volunteer_register():
+    if request.method == 'POST':
+        skills = request.form.get('skills')
+        location = request.form.get('location')
+        
+        conn = sqlite3.connect('pilgrim.db')
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute('''
+                INSERT INTO volunteers (user_id, skills, location)
+                VALUES (?, ?, ?)
+            ''', (session['user_id'], skills, location))
+            
+            conn.commit()
+            flash('Volunteer registration successful!', 'success')
+            return redirect(url_for('user_dashboard'))
+            
+        except sqlite3.IntegrityError:
+            flash('You are already registered as a volunteer', 'info')
+            return redirect(url_for('user_dashboard'))
+        finally:
+            conn.close()
+    
+    return render_template('volunteer_register.html')
+
+# Volunteer dashboard
+@app.route('/volunteer/dashboard')
+@login_required
+def volunteer_dashboard():
+    # Check if user is a volunteer
+    conn = sqlite3.connect('pilgrim.db')
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT * FROM volunteers WHERE user_id = ?', (session['user_id'],))
+    volunteer = cursor.fetchone()
+    
+    if not volunteer:
+        flash('You are not registered as a volunteer', 'error')
+        return redirect(url_for('user_dashboard'))
+    
+    # Get assigned incidents
+    cursor.execute('''
+        SELECT i.*, u.username as reporter_name 
+        FROM incidents i 
+        JOIN users u ON i.user_id = u.id 
+        WHERE i.assigned_to = ? 
+        ORDER BY i.timestamp DESC
+    ''', (session['user_id'],))
+    assigned_incidents = cursor.fetchall()
+    
+    # Get available incidents (not assigned)
+    cursor.execute('''
+        SELECT i.*, u.username as reporter_name 
+        FROM incidents i 
+        JOIN users u ON i.user_id = u.id 
+        WHERE i.assigned_to IS NULL AND i.status = 'reported'
+        ORDER BY i.priority DESC, i.timestamp ASC
+    ''')
+    available_incidents = cursor.fetchall()
+    
+    conn.close()
+    
+    return render_template('volunteer_dashboard.html', 
+                         assigned_incidents=assigned_incidents,
+                         available_incidents=available_incidents)
 
 @app.route('/visualization')
 def visualization():
@@ -1221,11 +1687,131 @@ def visualization():
     historical_data = cursor.fetchall()
     conn.close()
     return render_template('visualization.html', historical_data=historical_data)
+# Add these imports if not already present
+from datetime import datetime
+import sqlite3
 
-@app.route('/logout')
-def logout():
+# Add this route to handle the visitor information form submission
+@app.route('/api/visitor/info', methods=['POST'])
+@login_required
+def save_visitor_info():
+    try:
+        # Get form data
+        full_name = request.form.get('full_name')
+        age = request.form.get('age')
+        phone_number = request.form.get('phone_number')
+        email = request.form.get('email')
+        address = request.form.get('address')
+        booking_id = request.form.get('booking_id')
+        
+        # Validate required fields
+        if not all([full_name, age, phone_number, email, address, booking_id]):
+            return jsonify({
+                'success': False, 
+                'message': 'All fields are required'
+            }), 400
+        
+        # Convert age to integer
+        try:
+            age = int(age)
+        except ValueError:
+            return jsonify({
+                'success': False, 
+                'message': 'Age must be a number'
+            }), 400
+        
+        # Connect to database
+        conn = sqlite3.connect('pilgrim.db')
+        cursor = conn.cursor()
+        
+        # Check if booking exists and belongs to user
+        cursor.execute(
+            'SELECT id FROM bookings WHERE booking_id = ? AND user_id = ?',
+            (booking_id, session['user_id'])
+        )
+        booking = cursor.fetchone()
+        
+        if not booking:
+            conn.close()
+            return jsonify({
+                'success': False, 
+                'message': 'Invalid booking ID'
+            }), 400
+        
+        # Save visitor information
+        cursor.execute('''
+            INSERT INTO visitors (full_name, age, phone_number, email, address, user_id, booking_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (full_name, age, phone_number, email, address, session['user_id'], booking[0]))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Visitor information saved successfully'
+        })
+        
+    except Exception as e:
+        print(f"Error saving visitor info: {str(e)}")
+        return jsonify({
+            'success': False, 
+            'message': 'Internal server error'
+        }), 500
+
+# Add this route to get visitor information for a booking
+@app.route('/api/visitor/info/<booking_id>')
+@login_required
+def get_visitor_info(booking_id):
+    try:
+        conn = sqlite3.connect('pilgrim.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT v.full_name, v.age, v.phone_number, v.email, v.address, v.created_at
+            FROM visitors v
+            JOIN bookings b ON v.booking_id = b.id
+            WHERE b.booking_id = ? AND b.user_id = ?
+        ''', (booking_id, session['user_id']))
+        
+        visitor_info = cursor.fetchone()
+        conn.close()
+        
+        if visitor_info:
+            return jsonify({
+                'success': True,
+                'data': {
+                    'full_name': visitor_info[0],
+                    'age': visitor_info[1],
+                    'phone_number': visitor_info[2],
+                    'email': visitor_info[3],
+                    'address': visitor_info[4],
+                    'created_at': visitor_info[5]
+                }
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'No visitor information found for this booking'
+            }), 404
+            
+    except Exception as e:
+        print(f"Error retrieving visitor info: {str(e)}")
+        return jsonify({
+            'success': False, 
+            'message': 'Internal server error'
+        }), 500
+
+# @app.route('/logout')
+# def logout():
     session.clear()
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    with app.app_context():
+        init_db()
+    
+    # Start background task for resetting slots
+    socketio.start_background_task(reset_slots_daily)
+    
+    socketio.run(app, debug=True)
