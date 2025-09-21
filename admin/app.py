@@ -9,7 +9,7 @@ app.secret_key = 'pilgrim_secret_key'
 
 # Database initialization
 def init_db():
-    conn = sqlite3.connect('temple_management.db')
+    conn = sqlite3.connect('pilgrim.db')
     c = conn.cursor()
     
     # Create tables if they don't exist
@@ -48,7 +48,7 @@ init_db()
 
 # Helper function to get database connection
 def get_db():
-    conn = sqlite3.connect('temple_management.db')
+    conn = sqlite3.connect('pilgrim.db')
     conn.row_factory = sqlite3.Row
     return conn
 
