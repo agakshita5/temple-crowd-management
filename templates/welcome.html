@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .dashboard-header {
+        margin-bottom: 2rem;
+    }
+    .dashboard-card {
+        background: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow);
+        padding: 2rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    .dashboard-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+    }
+    .dashboard-card i {
+        font-size: 3.5rem;
+        color: var(--spiritual);
+        margin-bottom: 1rem;
+    }
+    .dashboard-card h4 {
+        font-weight: 600;
+        color: var(--dark);
+    }
+    .dashboard-card p {
+        color: #6c757d;
+    }
+</style>
+
+<div class="container animate-fadeIn">
+    <div class="dashboard-header text-center">
+        <h1 class="spiritual-text">Welcome, {{ session.get('username', 'Devotee') }}!</h1>
+        <p class="lead">Manage your spiritual journey from your personal dashboard.</p>
+    </div>
+
+    <div class="row">
+        <!-- Book a Slot Card -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <a href="{{ url_for('user_dashboard') }}" class="text-decoration-none">
+                <div class="dashboard-card">
+                    <i class="fas fa-calendar-check"></i>
+                    <h4>Book a Slot</h4>
+                    <p>Schedule your temple visit and get a confirmed time slot.</p>
+                </div>
+            </a>
+        </div>
+
+        <!-- Check Live Crowd Card -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <a href="{{ url_for('live_crowd') }}" class="text-decoration-none">
+                <div class="dashboard-card">
+                    <i class="fas fa-users"></i>
+                    <h4>Check Live Crowd</h4>
+                    <p>Get real-time updates on crowd levels at the temple.</p>
+                </div>
+            </a>
+        </div>
+
+        <!-- Make a Donation Card -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <a href="{{ url_for('donate') }}" class="text-decoration-none">
+                <div class="dashboard-card">
+                    <i class="fas fa-hand-holding-heart"></i>
+                    <h4>Make a Donation</h4>
+                    <p>Contribute to the temple's maintenance and activities.</p>
+                </div>
+            </a>
+        </div>
+
+        <!-- Report an Incident Card -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <a href="{{ url_for('report_incident') }}" class="text-decoration-none">
+                <div class="dashboard-card">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h4>Report an Incident</h4>
+                    <p>Notify authorities about any issues or concerns.</p>
+                </div>
+            </a>
+        </div>
+
+        <!-- Emergency Contacts Card -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <a href="{{ url_for('emergency_contacts') }}" class="text-decoration-none">
+                <div class="dashboard-card">
+                    <i class="fas fa-phone-alt"></i>
+                    <h4>Emergency Contacts</h4>
+                    <p>Quick access to important contact numbers.</p>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

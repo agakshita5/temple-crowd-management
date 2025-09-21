@@ -1,42 +1,22 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User Registration</title>
+</head>
+<body>
+    <h2>Register</h2>
+    <form method="POST" action="{{ url_for('user_register') }}">
+        <label>Username:</label><br>
+        <input type="text" name="username" required><br><br>
 
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header spiritual-bg text-white">
-                <h3 class="mb-0"><i class="fas fa-user-plus me-2"></i>Create Your Account</h3>
-            </div>
-            <div class="card-body">
-                <form method="POST" action="{{ url_for('user_register') }}">
-                    <div class="mb-3">
-                        <label for="username" class="form-label">Username</label>
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="fas fa-user"></i></span>
-                            <input type="text" class="form-control" id="username" name="username" required>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email address</label>
-                         <div class="input-group">
-                            <span class="input-group-text"><i class="fas fa-envelope"></i></span>
-                            <input type="email" class="form-control" id="email" name="email" required>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Password</label>
-                        <div class="input-group">
-                             <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                            <input type="password" class="form-control" id="password" name="password" required>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">Register</button>
-                </form>
-                <p class="text-center mt-3">
-                    Already have an account? <a href="{{ url_for('login') }}">Login here</a>
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
+        <label>Email:</label><br>
+        <input type="email" name="email" required><br><br>
+
+        <label>Password:</label><br>
+        <input type="password" name="password" required><br><br>
+
+        <button type="submit">Register</button>
+    </form>
+    <p>Already have an account? <a href="{{ url_for('index') }}">Login here</a></p>
+</body>
+</html>

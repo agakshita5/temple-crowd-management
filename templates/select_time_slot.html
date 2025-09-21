@@ -1,0 +1,209 @@
+<!-- templates/select_time_slot.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Time Slot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .slot-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+        .slot-card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        .slot-available {
+            background-color: #f8fff8;
+            border-left: 4px solid #28a745;
+        }
+        .slot-limited {
+            background-color: #fff8f8;
+            border-left: 4px solid #ffc107;
+        }
+        .slot-full {
+            background-color: #f8f8f8;
+            border-left: 4px solid #dc3545;
+            opacity: 0.6;
+        }
+        .filter-section {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h2 class="mb-4">Select Time Slot</h2>
+        
+        <!-- Filter Section -->
+        <div class="filter-section">
+            <div class="row">
+                <div class="col-md-4">
+                    <label for="temple-select" class="form-label">Select Temple</label>
+                    <select class="form-select" id="temple-select">
+                        {% for temple in temples %}
+                            <option value="{{ temple }}" {% if temple == selected_temple %}selected{% endif %}>{{ temple }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="date-select" class="form-label">Select Date</label>
+                    <input type="date" class="form-control" id="date-select" value="{{ selected_date }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">&nbsp;</label>
+                    <button class="btn btn-primary w-100" onclick="loadSlots()">Load Available Slots</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slots Container -->
+        <div id="slots-container">
+            {% for slot in slots %}
+                <div class="slot-card {% if slot.available_slots > 20 %}slot-available{% elif slot.available_slots > 0 %}slot-limited{% else %}slot-full{% endif %}">
+                    <h5>{{ slot.time_range }}</h5>
+                    <p>{{ slot.available_slots }} of {{ slot.total_slots }} slots available</p>
+                    {% if slot.available_slots > 0 %}
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#bookingModal" 
+                                data-slot-id="{{ slot.id }}" 
+                                data-time-range="{{ slot.time_range }}">
+                            SELECT SLOT
+                        </button>
+                    {% else %}
+                        <button class="btn btn-secondary" disabled>FULLY BOOKED</button>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Booking Modal -->
+        <div class="modal fade" id="bookingModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Book Time Slot</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form method="POST" action="{{ url_for('select_time_slot') }}">
+                        <div class="modal-body">
+                            <input type="hidden" name="slot_id" id="modal-slot-id">
+                            <p id="modal-time-range"></p>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Number of Persons</label>
+                                <input type="number" class="form-control" name="persons" min="1" max="10" value="1" required>
+                            </div>
+                            
+                            <h6 class="mt-4">Visitor Information</h6>
+                            <div class="mb-3">
+                                <label class="form-label">Full Name</label>
+                                <input type="text" class="form-control" name="full_name" required>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Age</label>
+                                        <input type="number" class="form-control" name="age" min="1" max="120" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Phone Number</label>
+                                        <input type="tel" class="form-control" name="phone_number" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-control" name="email" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Address</label>
+                                <textarea class="form-control" name="address" rows="2" required></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Confirm Booking</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Initialize modal with slot data
+        var bookingModal = document.getElementById('bookingModal');
+        bookingModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            var slotId = button.getAttribute('data-slot-id');
+            var timeRange = button.getAttribute('data-time-range');
+            
+            document.getElementById('modal-slot-id').value = slotId;
+            document.getElementById('modal-time-range').textContent = 'Time Slot: ' + timeRange;
+        });
+
+        // Load slots based on filters
+        function loadSlots() {
+            var temple = document.getElementById('temple-select').value;
+            var date = document.getElementById('date-select').value;
+            
+            fetch(`/api/time-slots?temple=${temple}&date=${date}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        var container = document.getElementById('slots-container');
+                        container.innerHTML = '';
+                        
+                        if (data.slots.length === 0) {
+                            container.innerHTML = '<div class="alert alert-info">No available slots found for the selected criteria.</div>';
+                            return;
+                        }
+                        
+                        data.slots.forEach(slot => {
+                            var slotClass = 'slot-card ';
+                            if (slot.available_slots > 20) {
+                                slotClass += 'slot-available';
+                            } else if (slot.available_slots > 0) {
+                                slotClass += 'slot-limited';
+                            } else {
+                                slotClass += 'slot-full';
+                            }
+                            
+                            var buttonHtml = slot.available_slots > 0 
+                                ? `<button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#bookingModal" 
+                                    data-slot-id="${slot.id}" data-time-range="${slot.time_range}">
+                                    SELECT SLOT
+                                  </button>`
+                                : `<button class="btn btn-secondary" disabled>FULLY BOOKED</button>`;
+                            
+                            container.innerHTML += `
+                                <div class="${slotClass}">
+                                    <h5>${slot.time_range}</h5>
+                                    <p>${slot.available_slots} of ${slot.total_slots} slots available</p>
+                                    ${buttonHtml}
+                                </div>
+                            `;
+                        });
+                    } else {
+                        alert('Error loading slots: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error loading slots');
+                });
+        }
+    </script>
+</body>
+</html>
