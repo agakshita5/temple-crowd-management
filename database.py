@@ -15,18 +15,10 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             email TEXT UNIQUE NOT NULL,
-            password_hash TEXT,
-            created_at TEXT
+            password_hash TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-
-    # Ensure missing columns exist in users table
-    cursor.execute("PRAGMA table_info(users)")
-    user_columns = [col[1] for col in cursor.fetchall()]
-    if "password_hash" not in user_columns:
-        cursor.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
-    if "created_at" not in user_columns:
-        cursor.execute("ALTER TABLE users ADD COLUMN created_at TEXT")
 
     # -------------------------
     # Admins table
@@ -35,18 +27,10 @@ def init_db():
         CREATE TABLE IF NOT EXISTS admins (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
-            password_hash TEXT,
-            created_at TEXT
+            password_hash TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-
-    # Ensure missing columns exist in admins table
-    cursor.execute("PRAGMA table_info(admins)")
-    admin_columns = [col[1] for col in cursor.fetchall()]
-    if "password_hash" not in admin_columns:
-        cursor.execute("ALTER TABLE admins ADD COLUMN password_hash TEXT")
-    if "created_at" not in admin_columns:
-        cursor.execute("ALTER TABLE admins ADD COLUMN created_at TEXT")
 
     # -------------------------
     # Time slots table
@@ -54,28 +38,112 @@ def init_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS time_slots (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            slot_date TEXT,
-            slot_time TEXT,
-            temple_name TEXT,
-            total_slots INTEGER,
-            available_slots INTEGER
+            temple_name TEXT NOT NULL,
+            slot_date DATE NOT NULL,
+            slot_time TEXT NOT NULL,
+            total_slots INTEGER NOT NULL,
+            available_slots INTEGER NOT NULL,
+            UNIQUE(temple_name, slot_date, slot_time)
         )
     ''')
 
     # -------------------------
-    # Bookings table
+    # Bookings table - FIXED SCHEMA
     # -------------------------
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS bookings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            slot_id INTEGER,
-            booking_id INTEGER,
+            user_id INTEGER NOT NULL,
+            slot_id INTEGER NOT NULL,
+            persons INTEGER NOT NULL,
+            booking_id TEXT UNIQUE NOT NULL,
             qr_code TEXT,
-            booking_time TEXT,
-            status TEXT,
-            FOREIGN KEY (user_id) REFERENCES users(id),
-            FOREIGN KEY (slot_id) REFERENCES time_slots(id)
+            booking_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            status TEXT DEFAULT 'pending',
+            valid_until TIMESTAMP,
+            temple_name TEXT NOT NULL,  -- Changed from 'temple' to 'temple_name'
+            slot TEXT NOT NULL,
+            name TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users (id),
+            FOREIGN KEY (slot_id) REFERENCES time_slots (id)
+        )
+    ''')
+
+    # -------------------------
+    # Medical emergencies table
+    # -------------------------
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS medical_emergencies (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            emergency_type TEXT NOT NULL,
+            location TEXT NOT NULL,
+            details TEXT,
+            contact_number TEXT NOT NULL,
+            affected_persons INTEGER DEFAULT 1,
+            status TEXT DEFAULT 'pending',
+            admin_notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            resolved_at TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+
+    # -------------------------
+    # Donations table
+    # -------------------------
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS donations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        amount REAL NOT NULL,
+        donation_type TEXT NOT NULL,
+        message TEXT,
+        payment_method TEXT DEFAULT 'stripe',  -- 'stripe' or 'upi'
+        payment_status TEXT DEFAULT 'pending',
+        stripe_payment_id TEXT,
+        upi_transaction_id TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+    )
+''')
+    cursor.execute('''
+    ALTER TABLE donations
+    ADD COLUMN payment_method TEXT
+''')
+
+    # -------------------------
+    # Accommodation bookings table
+    # -------------------------
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS accommodation_bookings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            check_in DATE NOT NULL,
+            check_out DATE NOT NULL,
+            guests INTEGER NOT NULL,
+            special_requests TEXT,
+            status TEXT DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+
+    # -------------------------
+    # Transportation requests table
+    # -------------------------
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS transport_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            journey_type TEXT NOT NULL,
+            pickup_location TEXT NOT NULL,
+            dropoff_location TEXT NOT NULL,
+            passengers INTEGER NOT NULL,
+            datetime TIMESTAMP NOT NULL,
+            status TEXT DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
         )
     ''')
 
@@ -85,9 +153,9 @@ def init_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS historical_data (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date TEXT,
-            temple_name TEXT,
-            estimated_footfall INTEGER
+            date DATE NOT NULL,
+            temple_name TEXT NOT NULL,
+            estimated_footfall INTEGER NOT NULL
         )
     ''')
 
@@ -97,11 +165,11 @@ def init_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS notifications_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            recipient TEXT,
-            subject TEXT,
+            recipient TEXT NOT NULL,
+            subject TEXT NOT NULL,
             body TEXT,
-            status TEXT,
-            created_at TEXT
+            status TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
 
@@ -112,9 +180,9 @@ def init_db():
     if cursor.fetchone()[0] == 0:
         password_hash = generate_password_hash("admin123")
         cursor.execute('''
-            INSERT INTO admins (username, password_hash, created_at)
-            VALUES (?, ?, ?)
-        ''', ('admin', password_hash, datetime.now().isoformat()))
+            INSERT INTO admins (username, password_hash)
+            VALUES (?, ?)
+        ''', ('admin', password_hash))
 
     # -------------------------
     # Insert demo user if not exists
@@ -123,36 +191,85 @@ def init_db():
     if cursor.fetchone()[0] == 0:
         password_hash = generate_password_hash("demo123")
         cursor.execute('''
-            INSERT INTO users (username, email, password_hash, created_at)
-            VALUES (?, ?, ?, ?)
-        ''', ('demo_user', 'demo@example.com', password_hash, datetime.now().isoformat()))
+            INSERT INTO users (username, email, password_hash)
+            VALUES (?, ?, ?)
+        ''', ('demo_user', 'demo@example.com', password_hash))
 
     # -------------------------
-    # Insert sample time slots
+    # Insert sample time slots if not exists
     # -------------------------
     cursor.execute('SELECT COUNT(*) FROM time_slots')
     if cursor.fetchone()[0] == 0:
-        time_slots = [
-            "08:00-09:00", "09:00-10:00", "10:00-11:00", "11:00-12:00",
-            "12:00-13:00", "13:00-14:00", "14:00-15:00", "15:00-16:00",
-            "16:00-17:00", "17:00-18:00"
-        ]
-        temples = ["Somnath", "Dwarka", "Ambaji", "Pavagadh"]
-
-        for i in range(7):
-            date = (datetime.now() + timedelta(days=i)).date()
-            for temple in temples:
-                for slot in time_slots:
+        today = datetime.now().date()
+        temples = ['Somnath Temple', 'Dwarka Temple', 'Ambaji Temple', 'Pavagadh Temple']
+        times = ['06:00 - 07:30', '07:30 - 09:00', '09:00 - 10:30', '10:30 - 12:00',
+                '12:00 - 13:30', '13:30 - 15:00', '15:00 - 16:30', '16:30 - 18:00']
+        
+        for temple in temples:
+            for i in range(7):  # Next 7 days
+                for time_slot in times:
+                    slot_date = today + timedelta(days=i)
                     total_slots = random.randint(50, 200)
                     cursor.execute('''
-                        INSERT INTO time_slots (slot_date, slot_time, temple_name, total_slots, available_slots)
+                        INSERT INTO time_slots (temple_name, slot_date, slot_time, total_slots, available_slots)
                         VALUES (?, ?, ?, ?, ?)
-                    ''', (date.isoformat(), slot, temple, total_slots, total_slots))
+                    ''', (temple, slot_date.isoformat(), time_slot, total_slots, total_slots))
+
+    # -------------------------
+    # Insert sample historical data if not exists
+    # -------------------------
+    cursor.execute('SELECT COUNT(*) FROM historical_data')
+    if cursor.fetchone()[0] == 0:
+        today = datetime.now().date()
+        temples = ['Somnath Temple', 'Dwarka Temple', 'Ambaji Temple', 'Pavagadh Temple']
+        
+        for i in range(30):  # Last 30 days
+            date = today - timedelta(days=i)
+            for temple in temples:
+                # Generate realistic footfall data (higher on weekends)
+                day_of_week = date.weekday()
+                base_footfall = 500 if day_of_week < 5 else 1500  # Weekdays vs weekends
+                footfall = base_footfall + random.randint(-200, 200)
+                
+                cursor.execute('''
+                    INSERT INTO historical_data (date, temple_name, estimated_footfall)
+                    VALUES (?, ?, ?)
+                ''', (date.isoformat(), temple, footfall))
 
     conn.commit()
     conn.close()
-    print("✅ Database initialized with tables and demo data")
+    print("✅ Database initialized with all tables and demo data")
 
+# Function to check and fix existing database schema
+def migrate_existing_db():
+    conn = sqlite3.connect('pilgrim.db')
+    cursor = conn.cursor()
+    
+    # Check if bookings table has the old 'temple' column
+    cursor.execute("PRAGMA table_info(bookings)")
+    booking_columns = [col[1] for col in cursor.fetchall()]
+    
+    if 'temple' in booking_columns and 'temple_name' not in booking_columns:
+        print("🔄 Migrating database schema...")
+        # Rename temple to temple_name
+        cursor.execute('ALTER TABLE bookings RENAME COLUMN temple TO temple_name')
+        print("✅ Renamed 'temple' column to 'temple_name' in bookings table")
+    
+    # Add any other missing columns to bookings table
+    required_columns = ['persons', 'valid_until', 'name']
+    for column in required_columns:
+        if column not in booking_columns:
+            if column == 'persons':
+                cursor.execute('ALTER TABLE bookings ADD COLUMN persons INTEGER DEFAULT 1')
+            elif column == 'valid_until':
+                cursor.execute('ALTER TABLE bookings ADD COLUMN valid_until TIMESTAMP')
+            elif column == 'name':
+                cursor.execute('ALTER TABLE bookings ADD COLUMN name TEXT')
+            print(f"✅ Added missing column '{column}' to bookings table")
+    
+    conn.commit()
+    conn.close()
 
 if __name__ == "__main__":
     init_db()
+    migrate_existing_db()

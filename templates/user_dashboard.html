@@ -703,15 +703,32 @@
                 this.classList.add('btn-secondary');
             });
 
-            // Download QR code
             document.getElementById('download-btn').addEventListener('click', function() {
-                alert('QR code download functionality would be implemented here.');
+                const qrCanvas = document.querySelector('#qr-code canvas');
+                if (!qrCanvas) return;
+            
+                const imageData = qrCanvas.toDataURL("image/png");
+                const link = document.createElement('a');
+                link.href = imageData;
+                link.download = `${document.getElementById('booking-id').textContent}.png`;
+                link.click();
             });
+            
 
-            // Email ticket
-            document.getElementById('email-btn').addEventListener('click', function() {
-                alert('Email ticket functionality would be implemented here.');
-            });
+           // Add this to your existing JavaScript in user_dashboard.html
+
+document.addEventListener('DOMContentLoaded', function() {
+    // ... existing code ...
+    
+    // Add download QR functionality
+    document.getElementById('download-btn').addEventListener('click', function() {
+        const bookingId = document.getElementById('booking-id').textContent;
+        window.location.href = `/download_qr/${bookingId.replace('PIL-', '')}`;
+    });
+    
+    // ... existing code ...
+});
+            
         });
     </script>
 </body>

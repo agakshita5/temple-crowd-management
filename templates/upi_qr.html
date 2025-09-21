@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="text-center">Scan QR Code to Pay via UPI</h2>
+
+<div class="payment-info">
+    <p><strong>Amount:</strong> ₹{{ amount }}</p>
+    <p><strong>Purpose:</strong> {{ donation_type }}</p>
+    <p><strong>UPI ID:</strong> {{ upi_id }}</p>
+</div>
+
+<div class="qr-container">
+    <img src="data:image/png;base64,{{ qr_code }}" alt="UPI QR Code" class="qr-image">
+</div>
+
+<div class="instructions">
+    <h4>Instructions:</h4>
+    <ol>
+        <li>Open your UPI app (Google Pay, PhonePe, Paytm, etc.)</li>
+        <li>Tap on "Scan QR Code"</li>
+        <li>Scan the QR code above</li>
+        <li>Confirm the payment details and complete the transaction</li>
+        <li>Click the confirmation button below</li>
+    </ol>
+</div>
+
+<div class="confirmation-buttons">
+    <a href="{{ url_for('confirm_upi_payment', donation_id=donation_id) }}" class="btn btn-success">
+        ✅ I've Made the Payment
+    </a>
+    
+    <a href="{{ url_for('donate') }}" class="btn btn-secondary">
+        ← Back to Donation
+    </a>
+</div>
+
+<style>
+.payment-info {
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 25px;
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.qr-container {
+    text-align: center;
+    margin: 25px 0;
+}
+
+.qr-image {
+    width: 250px;
+    max-width: 90%;
+    height: auto;
+    border: 2px solid #ddd;
+    padding: 10px;
+    border-radius: 10px;
+    background: white;
+}
+
+.instructions {
+    background-color: #fff3cd;
+    padding: 20px;
+    border-radius: 10px;
+    margin: 25px 0;
+    border: 1px solid #ffeaa7;
+}
+
+.instructions ol {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.confirmation-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 25px;
+}
+
+.btn {
+    padding: 12px 25px;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 500;
+    display: inline-block;
+    transition: 0.3s;
+}
+
+.btn-success {
+    background-color: #28a745;
+    color: white;
+}
+
+.btn-success:hover {
+    background-color: #218838;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+}
+</style>
+{% endblock %}
