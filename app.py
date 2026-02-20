@@ -22,9 +22,6 @@ import stripe
 app = Flask(__name__)
 app.secret_key = 'pilgrim_secret_key'
 
-stripe.api_key = "sk_test_51RFY3IQW8fY5qAnlngq7SziCL1ypMXcLcbiVu0FOQmkkGseDB6wfosb1EoAriqioM8ykZYWmxD2hMYrjAvK4jyxT00nARclhw4"
-STRIPE_PUBLISHABLE_KEY = "pk_test_51RFY3IQW8fY5qAnl73PdcNdfIovzFy8mzDHMpWMqSkaiLdq9s2cTQT7JEHfrhUHYL5C16SAXsAJFn7039pPYikvV00aW0yg2Mi"
-
 UPI_ID = "7014080430@axl"
 PAYEE_NAME = "Sonam Yadav"
 # ✅ Add file upload configuration here
